@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart'; 
 
 // ----------------------------------------------------------------------------
 //                              Employee Registration Form
@@ -16,6 +17,9 @@ class EmployeeFormPage extends StatefulWidget {
 }
 
 class _EmployeeFormPageState extends State<EmployeeFormPage> {
+  // 1. Face Verification State Variables
+  bool _isProcessingImage = false;
+  String _imageStatusMessage = '';
   final _formKey = GlobalKey<FormState>();
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
@@ -166,8 +170,26 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   // --------------------------------------------------------------------------
   //                              UI Components
   // --------------------------------------------------------------------------
+  Future<bool> _checkForFace(String imagePath) async {
+    final inputImage = InputImage.fromFilePath(imagePath);
+
+    final faceDetector = FaceDetector(
+      options: FaceDetectorOptions(performanceMode: FaceDetectorMode.fast),
+    );
+
+    try {
+      final List<Face> faces = await faceDetector.processImage(inputImage);
+      await faceDetector.close();
+      return faces.isNotEmpty;
+    } catch (e) {
+      debugPrint("Face detection error: $e");
+      await faceDetector.close();
+      return false;
+    }
+  }
 
   void _showImagePicker() {
+    if (_isProcessingImage) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -184,27 +206,20 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
                   color: Color(0xFF282C5C),
                 ),
                 title: const Text("Choose from Gallery"),
-                onTap: () async {
-                  final picked = await _picker.pickImage(
-                    source: ImageSource.gallery,
-                  );
-                  if (picked != null) {
-                    setState(() => _selectedImage = File(picked.path));
-                  }
+                onTap: () {
                   Navigator.pop(context);
+                  _pickAndVerifyImage(ImageSource.gallery);
                 },
+                
               ),
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Color(0xFF282C5C)),
                 title: const Text("Take a Photo"),
-                onTap: () async {
-                  final picked = await _picker.pickImage(
-                    source: ImageSource.camera,
-                  );
-                  if (picked != null) {
-                    setState(() => _selectedImage = File(picked.path));
-                  }
+                onTap: (){
                   Navigator.pop(context);
+                  _pickAndVerifyImage(ImageSource.camera);
+                  
+                  
                 },
               ),
             ],
@@ -213,8 +228,47 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
       },
     );
   }
+  Future<void> _pickAndVerifyImage(ImageSource source) async {
+    final XFile? pickedFile = await _picker.pickImage(source: source);
+
+    if (pickedFile != null) {
+      // 1. Set state to start processing
+      setState(() {
+        _isProcessingImage = true;
+        _selectedImage = null; // Clear previous image
+        _imageStatusMessage = 'Checking image for face... Please wait.';
+      });
+
+      final imagePath = pickedFile.path;
+      final hasFace = await _checkForFace(imagePath);
+
+      // 2. Update state based on verification result
+      setState(() {
+        _isProcessingImage = false;
+        if (hasFace) {
+          _selectedImage = File(imagePath);
+          _imageStatusMessage = '✅ Face detected successfully! Image is valid.';
+        } else {
+          _selectedImage = null;
+          _imageStatusMessage =
+              '❌ Error: No face detected. Please ensure your face is visible.';
+        }
+      });
+    } else {
+      setState(() {
+        _imageStatusMessage = 'Image selection cancelled.';
+      });
+    }
+  }
+
 
   Widget _buildUploadField() {
+       final bool isFaceVerified = _imageStatusMessage.startsWith('✅');
+    final Color borderColor = isFaceVerified
+        ? Colors.green
+        : (_imageStatusMessage.startsWith('❌')
+              ? Colors.red
+              : Colors.grey[300]!);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -264,6 +318,19 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
                       width: double.infinity,
                     ),
                   ),
+          ),
+        ),
+        SizedBox(height: 8,),
+         Text(
+          _imageStatusMessage,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isFaceVerified
+                ? Colors.green.shade700
+                : (_imageStatusMessage.startsWith('❌')
+                      ? Colors.red
+                      : Colors.grey.shade600),
           ),
         ),
       ],
@@ -598,25 +665,30 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
                     const SizedBox(height: 24),
 
                     // Submit Button
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.person_add, color: Colors.white),
-                      label: const Text(
-                        "Register Employee",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                      onPressed: _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF282C5C),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
+                     ElevatedButton.icon(
+                            icon: const Icon(Icons.save, color: Colors.white),
+                            label: const Text(
+                              "Submit",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            // Button will only be enabled if image is selected AND face is verified
+                            onPressed:
+                                (_selectedImage != null &&
+                                    
+                                    _imageStatusMessage.startsWith('✅'))
+                                ? _submit
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF282C5C),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
                   ],
                 ),
               ),

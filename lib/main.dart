@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // import 'package:techcadd/employeeform.dart';
 import 'package:techcadd/qr_service.dart';
-import 'package:techcadd/validate.dart';
+import 'package:techcadd/studentform.dart';
 // import 'video_splash_screen.dart';
 
 Future<void> main() async {
@@ -17,40 +17,59 @@ Future<void> main() async {
     runApp(const MyApp());
   } catch (e) {
     debugPrint('Error setting orientation: $e');
+   // Always apply your system UI style here
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      systemNavigationBarColor: Color(0xFFF8F9FA), // bottom bar same as bg
+      systemNavigationBarIconBrightness: Brightness.dark,
+      statusBarColor: Colors.transparent, // transparent lets app bg show
+      statusBarIconBrightness: Brightness.dark, // dark icons on light bg
+    ),
+  );
     runApp(const MyApp());
   }
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Tech Login',
-      //light theme
-      theme: ThemeData(
-        // brightness: Brightness.light,
-        fontFamily: 'SF Pro Display',
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        primaryColor: const Color(0xFF282C5C),
-        colorScheme: const ColorScheme.light(
-          primary: Color(0xFF282C5C),
-          secondary: Color(0xFF282C5C),
-        ),
+ 
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent, // gradient ke liye transparent
+        statusBarIconBrightness: Brightness.dark, // ya Brightness.light
+        systemNavigationBarColor: Color(0xFFF8F9FA), // bottom bar
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
-      darkTheme: ThemeData(
-        // brightness: Brightness.dark,
-        fontFamily: 'SF Pro Display',
-        scaffoldBackgroundColor: const Color(0xFF282C5C),
-        primaryColor: const Color(0xFFF8F9FA),
-        colorScheme: const ColorScheme.light(
-          primary: Color(0xFFF8F9FA),
-          secondary: Color(0xFFF8F9FA),
+      child: MaterialApp(
+        title: 'Tech Login',
+        //light theme
+        theme: ThemeData(
+          // brightness: Brightness.light,
+          fontFamily: 'SF Pro Display',
+          scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+          primaryColor: const Color(0xFF282C5C),
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF282C5C),
+            secondary: Color(0xFF282C5C),
+          ),
         ),
+        darkTheme: ThemeData(
+          // brightness: Brightness.dark,
+          fontFamily: 'SF Pro Display',
+          scaffoldBackgroundColor: const Color(0xFF282C5C),
+          primaryColor: const Color(0xFFF8F9FA),
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFFF8F9FA),
+            secondary: Color(0xFFF8F9FA),
+          ),
+        ),
+        themeMode: ThemeMode.dark,
+        home: const LoginScreen(),
       ),
-      themeMode: ThemeMode.dark,
-      home: const LoginScreen(),
     );
   }
 }
@@ -113,11 +132,7 @@ class _LoginScreenState extends State<LoginScreen>
       body: Container(
         height: double.infinity,
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8F9FA), Color(0xFFE9ECEF)],
-          ),
+          color:  Color(0xFFF8F9FA)
         ),
         child: SafeArea(
           child: SingleChildScrollView(
