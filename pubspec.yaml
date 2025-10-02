@@ -35,10 +35,38 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   video_player: ^2.8.1 
+  flutter_launcher_icons: ^0.14.4
+  toast: ^0.3.0
+  fluttertoast: ^8.2.12
+  # video_player: ^2.10.0
+  provider: ^6.1.5+1
+  flutter_bloc: ^9.1.1
+  flutter_redux: ^0.10.0
+  flutter_mobx: ^2.3.0
+  mobx: ^2.5.0
+  http: ^1.5.0
+  web_socket_channel: ^2.4.0
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  shared_preferences: ^2.5.3
+  flutter_secure_storage: ^9.2.4
+  firebase_core: ^4.1.0
+  cloud_firestore: ^6.0.1
+  firebase_auth: ^6.0.2
+  assets: ^0.0.2
+  google_fonts: ^6.3.1
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.1.2
+  animations: ^2.0.11
+  image_picker: ^1.2.0
+  google_mlkit_face_detection: ^0.13.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  build_runner: ^2.7.0
+  mobx_codegen: ^2.7.2
+  # flutter_launcher_icons: ^0.14.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -89,16 +117,26 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+# flutter spalsh screen formatting
 flutter_native_splash:
   color: "#ffffff"
-  image: assets/images/whitebg.jpg
-
+  image: assets/images/icon_day.png
+  # background_image: assets/images/background.png
+  color_dark: "#282C5C"
+  android_gravity: center
+  android: true
+  ios: true
   android_12:
-    image: assets/images/whitebg.jpg
-    icon_background_color: "#ffffff"
-    image_dark: assets/images/whitebg.jpg
-    icon_background_color_dark: "#ffffff"
-android : true
-android_12 : true
+    color: "#ffffff"
+    image: assets/images/icon_day.png
+    # icon_background_color: "#ffffff"
+    color_dark: "#282C5C"
+    android_gravity: center
+    image_dark: assets/images/tech.png
+  # icon
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: assets/images/icon512.png
 
 

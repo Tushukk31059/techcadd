@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'video_splash_screen.dart';
+// import 'package:techcadd/employeeform.dart';
+import 'package:techcadd/qr_service.dart';
+import 'package:techcadd/validate.dart';
+// import 'video_splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,22 +28,32 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Tech Login',
+      //light theme
       theme: ThemeData(
+        // brightness: Brightness.light,
         fontFamily: 'SF Pro Display',
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        primaryColor: const Color(0xFF2A4A6E),
-        colorScheme: ColorScheme.light(
-          primary: const Color(0xFF2A4A6E),
-          secondary: const Color(0xFF2A4A6E),
+        primaryColor: const Color(0xFF282C5C),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF282C5C),
+          secondary: Color(0xFF282C5C),
         ),
       ),
-      home: const VideoSplashScreen(), // Start with video splash
-      debugShowCheckedModeBanner: false,
+      darkTheme: ThemeData(
+        // brightness: Brightness.dark,
+        fontFamily: 'SF Pro Display',
+        scaffoldBackgroundColor: const Color(0xFF282C5C),
+        primaryColor: const Color(0xFFF8F9FA),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFFF8F9FA),
+          secondary: Color(0xFFF8F9FA),
+        ),
+      ),
+      themeMode: ThemeMode.dark,
+      home: const LoginScreen(),
     );
   }
 }
-
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -52,10 +65,9 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
   int selectedIndex = 0;
-  late AnimationController _animationController;
+  int oldIndex = 0;
+
   late AnimationController _logoController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
   late Animation<double> _logoAnimation;
 
   final List<String> userTypes = ['Student', 'Employer', 'Admin'];
@@ -64,42 +76,23 @@ class _LoginScreenState extends State<LoginScreen>
     Icons.business,
     Icons.admin_panel_settings,
   ];
-
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
     _logoController = AnimationController(
       duration: const Duration(milliseconds: 1600),
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeOutBack,
-          ),
-        );
-
     _logoAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
     );
 
-    _animationController.forward();
     _logoController.forward();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
     _logoController.dispose();
     super.dispose();
   }
@@ -108,10 +101,9 @@ class _LoginScreenState extends State<LoginScreen>
     if (index != selectedIndex) {
       HapticFeedback.lightImpact();
       setState(() {
+        oldIndex = selectedIndex;
         selectedIndex = index;
       });
-      _animationController.reset();
-      _animationController.forward();
     }
   }
 
@@ -144,8 +136,8 @@ class _LoginScreenState extends State<LoginScreen>
                           ShaderMask(
                             shaderCallback: (bounds) => const LinearGradient(
                               colors: [
-                                Color(0xFF2A4A6E),
-                                Color.fromARGB(255, 48, 84, 125),
+                                Color(0xFF282C5C),
+                                Color.fromARGB(255, 40, 44, 92),
                               ],
                             ).createShader(bounds),
                             child: const Text(
@@ -175,11 +167,11 @@ class _LoginScreenState extends State<LoginScreen>
                 const SizedBox(height: 28),
                 Image.asset(
                   'assets/images/techcadd.png',
-                  width: 160,
-                  height: 160,
+                  width: 240,
+                  height: 69,
                   fit: BoxFit.cover,
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
                 // Tab Selector
                 AnimatedUserTypeSelector(
                   userTypes: userTypes,
@@ -191,30 +183,16 @@ class _LoginScreenState extends State<LoginScreen>
                 // Swipeable Content Area
                 GestureDetector(
                   onHorizontalDragEnd: (details) {
-                    // Detect swipe direction
-                    if (details.primaryVelocity! > 0) {
-                      // Swiped right - previous tab
-                      if (selectedIndex > 0) {
-                        _onTabChanged(selectedIndex - 1);
-                      }
-                    } else if (details.primaryVelocity! < 0) {
-                      // Swiped left - next tab
-                      if (selectedIndex < userTypes.length - 1) {
-                        _onTabChanged(selectedIndex + 1);
-                      }
+                    if (details.primaryVelocity! > 0 && selectedIndex > 0) {
+                      _onTabChanged(selectedIndex - 1);
+                    } else if (details.primaryVelocity! < 0 &&
+                        selectedIndex < userTypes.length - 1) {
+                      _onTabChanged(selectedIndex + 1);
                     }
                   },
-                  child: AnimatedBuilder(
-                    animation: _animationController,
-                    builder: (context, child) {
-                      return FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child: _buildContent(),
-                        ),
-                      );
-                    },
+                  child: KeyedSubtree(
+                    key: ValueKey<int>(selectedIndex),
+                    child: _buildContent(),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -264,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen>
                   children: [
                     const Icon(
                       Icons.school,
-                      color: Color(0xFF2A4A6E),
+                      color: Color(0xFF282C5C),
                       size: 24,
                     ),
                     const SizedBox(width: 8),
@@ -273,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen>
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF2A4A6E),
+                        color: const Color(0xFF282C5C),
                       ),
                     ),
                   ],
@@ -301,7 +279,7 @@ class _LoginScreenState extends State<LoginScreen>
                   child: Text(
                     'Forgot Password?',
                     style: TextStyle(
-                      color: const Color(0xFF2A4A6E),
+                      color: const Color(0xFF282C5C),
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -343,7 +321,7 @@ class _LoginScreenState extends State<LoginScreen>
                   children: [
                     const Icon(
                       Icons.business,
-                      color: Color(0xFF2A4A6E),
+                      color: Color(0xFF282C5C),
                       size: 24,
                     ),
                     const SizedBox(width: 8),
@@ -352,7 +330,7 @@ class _LoginScreenState extends State<LoginScreen>
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF2A4A6E),
+                        color: const Color(0xFF282C5C),
                       ),
                     ),
                   ],
@@ -380,7 +358,7 @@ class _LoginScreenState extends State<LoginScreen>
                   child: Text(
                     'Forgot Password?',
                     style: TextStyle(
-                      color: const Color(0xFF2A4A6E),
+                      color: const Color(0xFF282C5C),
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -392,7 +370,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
         const SizedBox(height: 6),
-        _buildNewRegistrationButton(),
+        _buildNewEmpRegistrationButton(),
       ],
     );
   }
@@ -422,7 +400,7 @@ class _LoginScreenState extends State<LoginScreen>
                   children: [
                     const Icon(
                       Icons.admin_panel_settings,
-                      color: Color(0xFF2A4A6E),
+                      color: Color(0xFF282C5C),
                       size: 24,
                     ),
                     const SizedBox(width: 8),
@@ -431,7 +409,7 @@ class _LoginScreenState extends State<LoginScreen>
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF2A4A6E),
+                        color: const Color(0xFF282C5C),
                       ),
                     ),
                   ],
@@ -449,7 +427,7 @@ class _LoginScreenState extends State<LoginScreen>
                     contentPadding: const EdgeInsets.all(16),
                     prefixIcon: const Icon(
                       Icons.account_tree,
-                      color: Color(0xFF2A4A6E),
+                      color: Color(0xFF282C5C),
                     ),
                   ),
                   hint: Text(
@@ -458,24 +436,28 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                   items: [
                     DropdownMenuItem(
-                      value: 'CSE',
-                      child: const Text('Computer Science Engineering'),
+                      value: 'Jalandhar-I',
+                      child: const Text('Jalandhar-I'),
                     ),
                     DropdownMenuItem(
-                      value: 'ECE',
-                      child: const Text('Electronics & Communication'),
+                      value: 'Jalandhar-II',
+                      child: const Text('Jalandhar-II'),
                     ),
                     DropdownMenuItem(
-                      value: 'MECH',
-                      child: const Text('Mechanical Engineering'),
+                      value: 'Phagwara',
+                      child: const Text('Phagwara'),
                     ),
                     DropdownMenuItem(
-                      value: 'CIVIL',
-                      child: const Text('Civil Engineering'),
+                      value: 'Hoshiarpur',
+                      child: const Text('Hoshiarpur'),
                     ),
                     DropdownMenuItem(
-                      value: 'IT',
-                      child: const Text('Information Technology'),
+                      value: 'Ludhiana',
+                      child: const Text('Ludhiana'),
+                    ),
+                    DropdownMenuItem(
+                      value: "Chandigarh",
+                      child: const Text("Chandigarh"),
                     ),
                   ],
                   onChanged: (value) {
@@ -521,7 +503,7 @@ class _LoginScreenState extends State<LoginScreen>
               border: InputBorder.none,
               hintText: hintText,
               hintStyle: TextStyle(color: Colors.grey[500]),
-              prefixIcon: Icon(icon, color: const Color(0xFF2A4A6E)),
+              prefixIcon: Icon(icon, color: const Color(0xFF282C5C)),
               contentPadding: const EdgeInsets.all(13),
             ),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
@@ -539,12 +521,12 @@ class _LoginScreenState extends State<LoginScreen>
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2A4A6E), Color.fromARGB(255, 47, 82, 121)],
+          colors: [Color(0xFF282C5C), Color.fromARGB(255, 47, 82, 121)],
         ),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2A4A6E).withAlpha(26),
+            color: const Color(0xFF282C5C).withAlpha(26),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -578,6 +560,10 @@ class _LoginScreenState extends State<LoginScreen>
     return TextButton(
       onPressed: () {
         HapticFeedback.lightImpact();
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => StudentFormPage()),
+        );
       },
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -585,12 +571,42 @@ class _LoginScreenState extends State<LoginScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.person_add, color: Color(0xFF2A4A6E), size: 20),
+          const Icon(Icons.person_add, color: Color(0xFF282C5C), size: 20),
           const SizedBox(width: 8),
           Text(
             'New Registration? Click here',
             style: TextStyle(
-              color: const Color(0xFF2A4A6E),
+              color: const Color(0xFF282C5C),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewEmpRegistrationButton() {
+    return TextButton(
+      onPressed: () {
+        HapticFeedback.lightImpact();
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => QRScan()),
+        );
+      },
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.person_add, color: Color(0xFF282C5C), size: 20),
+          const SizedBox(width: 8),
+          Text(
+            'Not Registered? Click here',
+            style: TextStyle(
+              color: const Color(0xFF282C5C),
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -671,12 +687,12 @@ class _AnimatedUserTypeSelectorState extends State<AnimatedUserTypeSelector>
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF2A4A6E), Color(0xFF2A4A6E)],
+                  colors: [Color(0xFF282C5C), Color(0xFF282C5C)],
                 ),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF2A4A6E).withAlpha(26),
+                    color: const Color(0xFF282C5C).withAlpha(26),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -722,7 +738,8 @@ class _AnimatedUserTypeSelectorState extends State<AnimatedUserTypeSelector>
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 14,
+                                //top navigation button size
+                                fontSize: 18,
                               ),
                               child: Text(userType),
                             ),
