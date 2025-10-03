@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart'; 
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 // ----------------------------------------------------------------------------
 //                              Employee Registration Form
@@ -20,6 +20,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   // 1. Face Verification State Variables
   bool _isProcessingImage = false;
   String _imageStatusMessage = '';
+  String _imageErrorMessage='';
   final _formKey = GlobalKey<FormState>();
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
@@ -54,8 +55,16 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
 
   final Map<String, List<String>> _designationData = {
     'Human Resources': ['HR Manager', 'Recruiter', 'HR Coordinator'],
-    'Marketing': ['Digital Marketing Head', 'Content Creator', 'SEO Specialist'],
-    'Development (IT)': ['Software Engineer', 'DevOps Engineer', 'Lead Developer'],
+    'Marketing': [
+      'Digital Marketing Head',
+      'Content Creator',
+      'SEO Specialist',
+    ],
+    'Development (IT)': [
+      'Software Engineer',
+      'DevOps Engineer',
+      'Lead Developer',
+    ],
     'Finance': ['Accounts Manager', 'Finance Analyst', 'Auditor'],
     'Sales': ['Sales Executive', 'Business Development Manager'],
     'Administration': ['Admin Manager', 'Office Assistant'],
@@ -65,7 +74,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
     'Full-Time',
     'Part-Time',
     'Contractual',
-    'Internship'
+    'Internship',
   ];
 
   @override
@@ -170,17 +179,25 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   // --------------------------------------------------------------------------
   //                              UI Components
   // --------------------------------------------------------------------------
+  // 3. Face Detection Logic - MODIFIED
   Future<bool> _checkForFace(String imagePath) async {
     final inputImage = InputImage.fromFilePath(imagePath);
 
+    // Set minFaceSize for a more robust detection, reducing false positives on tiny objects
     final faceDetector = FaceDetector(
-      options: FaceDetectorOptions(performanceMode: FaceDetectorMode.fast),
+      options: FaceDetectorOptions(
+        performanceMode: FaceDetectorMode.fast,
+        minFaceSize:
+            0.2, // Require the face to take up at least 20% of the image
+      ),
     );
 
     try {
       final List<Face> faces = await faceDetector.processImage(inputImage);
       await faceDetector.close();
-      return faces.isNotEmpty;
+
+      // 🔴 FIX 2: Check for EXACTLY ONE face 🔴
+      return faces.length == 1;
     } catch (e) {
       debugPrint("Face detection error: $e");
       await faceDetector.close();
@@ -210,16 +227,13 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
                   Navigator.pop(context);
                   _pickAndVerifyImage(ImageSource.gallery);
                 },
-                
               ),
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Color(0xFF282C5C)),
                 title: const Text("Take a Photo"),
-                onTap: (){
+                onTap: () {
                   Navigator.pop(context);
                   _pickAndVerifyImage(ImageSource.camera);
-                  
-                  
                 },
               ),
             ],
@@ -228,44 +242,96 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
       },
     );
   }
+
   Future<void> _pickAndVerifyImage(ImageSource source) async {
-    final XFile? pickedFile = await _picker.pickImage(source: source);
+    // 🔴 FIX: Add maxWidth and imageQuality parameters 🔴
+    final XFile? pickedFile = await _picker.pickImage(
+      source: source,
+      maxWidth: 1000, // Max width/height of 1000 pixels
+      imageQuality: 70, // Compress to 70% quality (0-100)
+    );
 
     if (pickedFile != null) {
+      // ... (rest of your existing logic)
+
       // 1. Set state to start processing
       setState(() {
         _isProcessingImage = true;
         _selectedImage = null; // Clear previous image
         _imageStatusMessage = 'Checking image for face... Please wait.';
+        _imageErrorMessage = 'Checking image for face... Please wait.';
       });
 
       final imagePath = pickedFile.path;
-      final hasFace = await _checkForFace(imagePath);
+      final inputImage = InputImage.fromFilePath(imagePath);
 
-      // 2. Update state based on verification result
+      // Use a local face detector instance to get the actual face count
+      final faceDetector = FaceDetector(
+        options: FaceDetectorOptions(
+          performanceMode: FaceDetectorMode.fast,
+          minFaceSize: 0.2,
+        ),
+      );
+
+      String status = '';
+
+      try {
+        final List<Face> faces = await faceDetector.processImage(inputImage);
+        await faceDetector.close();
+
+        // 2. Update state based on verification result
+        if (faces.length == 1) {
+          status = 'success';
+        } else if (faces.isEmpty) {
+          status = 'no_face';
+        } else {
+          status = 'multiple_faces';
+        }
+      } catch (e) {
+        debugPrint("Face detection error: $e");
+        await faceDetector.close();
+        status = 'error';
+      }
+
+      // 3. Update state based on the determined status
       setState(() {
         _isProcessingImage = false;
-        if (hasFace) {
+        if (status == 'success') {
           _selectedImage = File(imagePath);
           _imageStatusMessage = '✅ Face detected successfully! Image is valid.';
+          _imageErrorMessage='';
         } else {
           _selectedImage = null;
-          _imageStatusMessage =
-              '❌ Error: No face detected. Please ensure your face is visible.';
+          if (status == 'no_face') {
+            _imageStatusMessage =
+                '❌ Error: No face detected. Please ensure your face is clearly visible.';
+                _imageErrorMessage=
+                '❌ Error: No face detected. Please ensure your face is clearly visible.';
+          } else if (status == 'multiple_faces') {
+            _imageStatusMessage =
+                '❌ Error: Multiple faces detected. Please upload an image with only one face.';
+                _imageErrorMessage=
+                '❌ Error: Multiple faces detected. Please upload an image with only one face.';
+          } else {
+            _imageStatusMessage =
+                '❌ Error: Could not process image. Try again.';
+                _imageErrorMessage=
+                '❌ Error: Could not process image. Try again.';
+          }
         }
       });
     } else {
       setState(() {
         _imageStatusMessage = 'Image selection cancelled.';
+        _imageErrorMessage= 'Image selection cancelled.';
       });
     }
   }
 
-
   Widget _buildUploadField() {
-       final bool isFaceVerified = _imageStatusMessage.startsWith('✅');
+    final bool isFaceVerified = _imageStatusMessage.startsWith('✅');
     final Color borderColor = isFaceVerified
-        ? Colors.green
+        ? Colors.grey[300]!
         : (_imageStatusMessage.startsWith('❌')
               ? Colors.red
               : Colors.grey[300]!);
@@ -287,7 +353,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
             height: 140,
             width: double.infinity,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!, width: 1.5),
+              border: Border.all(color: borderColor, width: 1.5),
               borderRadius: BorderRadius.circular(16),
               color: Colors.grey[100],
             ),
@@ -304,8 +370,10 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
                         SizedBox(height: 6),
                         Text(
                           "Tap to upload Image",
-                          style: TextStyle(color: Color(0xFF282C5C),
-                          fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: Color(0xFF282C5C),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -320,9 +388,9 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
                   ),
           ),
         ),
-        SizedBox(height: 8,),
-         Text(
-          _imageStatusMessage,
+        SizedBox(height: 8),
+        Text(
+          _imageErrorMessage,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -448,12 +516,15 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
             }
           },
           child: InputDecorator(
-            decoration: _decoration(
-              prefix: const Icon(
-                Icons.calendar_month,
-                color: Color(0xFF282C5C),
-              ),
-            ).copyWith(hintText: _joinDate == null ? 'Select Joining Date' : null),
+            decoration:
+                _decoration(
+                  prefix: const Icon(
+                    Icons.calendar_month,
+                    color: Color(0xFF282C5C),
+                  ),
+                ).copyWith(
+                  hintText: _joinDate == null ? 'Select Joining Date' : null,
+                ),
             child: Text(
               _joinDate == null
                   ? "Select Date"
@@ -665,30 +736,29 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
                     const SizedBox(height: 24),
 
                     // Submit Button
-                     ElevatedButton.icon(
-                            icon: const Icon(Icons.save, color: Colors.white),
-                            label: const Text(
-                              "Submit",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            // Button will only be enabled if image is selected AND face is verified
-                            onPressed:
-                                (_selectedImage != null &&
-                                    
-                                    _imageStatusMessage.startsWith('✅'))
-                                ? _submit
-                                : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF282C5C),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                          ),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.save, color: Colors.white),
+                      label: const Text(
+                        "Submit",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      // Button will only be enabled if image is selected AND face is verified
+                      onPressed:
+                          (_selectedImage != null &&
+                              _imageStatusMessage.startsWith('✅'))
+                          ? _submit
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF282C5C),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
                   ],
                 ),
               ),
