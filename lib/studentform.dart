@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart'; // Face Detection
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:techcadd/student_dashboard.dart'; // Face Detection
 
 class StudentFormPage extends StatefulWidget {
   const StudentFormPage({super.key});
@@ -214,18 +215,19 @@ class _StudentFormPageState extends State<StudentFormPage> {
           } else if (status == 'multiple_faces') {
             _imageStatusMessage =
                 '❌ Error: Multiple faces detected. Please upload an image with only one face.';
-                _imageErrorMessage='❌ Error: Multiple faces detected. Please upload an image with only one face.';
+            _imageErrorMessage =
+                '❌ Error: Multiple faces detected. Please upload an image with only one face.';
           } else {
             _imageStatusMessage =
                 '❌ Error: Could not process image. Try again.';
-                _imageErrorMessage='❌ Error: Could not process image. Try again.';
+            _imageErrorMessage = '❌ Error: Could not process image. Try again.';
           }
         }
       });
     } else {
       setState(() {
         _imageStatusMessage = 'Image selection cancelled.';
-        _imageErrorMessage='Image selection camcelled';
+        _imageErrorMessage = 'Image selection camcelled';
       });
     }
   }
@@ -428,6 +430,10 @@ class _StudentFormPageState extends State<StudentFormPage> {
       );
       print(data);
     }
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const StudentDashboardApp()),
+    );
   }
 
   List<String> _getDurationOptions() {

@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  // Sets the default device size for the preview (optional, but good for showcasing responsiveness)
-  runApp(const StudentDashboardApp());
-}
-
 // --- COLOR AND CONSTANTS ---
 // Custom Brand Primary Color (0xFF282C5C)
 const Color primaryColor = Color(0xFF282C5C);
@@ -162,7 +157,7 @@ class SidebarWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'TechEdu',
+                  'Techcadd',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
