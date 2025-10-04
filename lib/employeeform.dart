@@ -20,7 +20,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
   // 1. Face Verification State Variables
   bool _isProcessingImage = false;
   String _imageStatusMessage = '';
-  String _imageErrorMessage='';
+  String _imageErrorMessage = '';
   final _formKey = GlobalKey<FormState>();
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
@@ -299,31 +299,30 @@ class _EmployeeFormPageState extends State<EmployeeFormPage> {
         if (status == 'success') {
           _selectedImage = File(imagePath);
           _imageStatusMessage = '✅ Face detected successfully! Image is valid.';
-          _imageErrorMessage='';
+          _imageErrorMessage = '';
         } else {
           _selectedImage = null;
           if (status == 'no_face') {
             _imageStatusMessage =
                 '❌ Error: No face detected. Please ensure your face is clearly visible.';
-                _imageErrorMessage=
+            _imageErrorMessage =
                 '❌ Error: No face detected. Please ensure your face is clearly visible.';
           } else if (status == 'multiple_faces') {
             _imageStatusMessage =
                 '❌ Error: Multiple faces detected. Please upload an image with only one face.';
-                _imageErrorMessage=
+            _imageErrorMessage =
                 '❌ Error: Multiple faces detected. Please upload an image with only one face.';
           } else {
             _imageStatusMessage =
                 '❌ Error: Could not process image. Try again.';
-                _imageErrorMessage=
-                '❌ Error: Could not process image. Try again.';
+            _imageErrorMessage = '❌ Error: Could not process image. Try again.';
           }
         }
       });
     } else {
       setState(() {
         _imageStatusMessage = 'Image selection cancelled.';
-        _imageErrorMessage= 'Image selection cancelled.';
+        _imageErrorMessage = 'Image selection cancelled.';
       });
     }
   }
