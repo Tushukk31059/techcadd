@@ -4,7 +4,10 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-import 'package:techcadd/student_dashboard.dart'; // Face Detection
+import 'package:techcadd/student_dashboard.dart';
+// ----------------------------------------------------------------------------
+//                              Student Registration Form
+// ----------------------------------------------------------------------------
 
 class StudentFormPage extends StatefulWidget {
   const StudentFormPage({super.key});
@@ -14,11 +17,10 @@ class StudentFormPage extends StatefulWidget {
 }
 
 class _StudentFormPageState extends State<StudentFormPage> {
+  // 1. Face Verification State Variables
   final _formKey = GlobalKey<FormState>();
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
-
-  // 1. Face Verification State Variables
   bool _isProcessingImage = false;
   String _imageStatusMessage = '';
   String _imageErrorMessage = '';
@@ -34,7 +36,6 @@ class _StudentFormPageState extends State<StudentFormPage> {
   // states
   bool _obscurePwd = true;
   bool _obscureConfirm = true;
-
   String? _branch;
   String? _course;
   String? _subCourse;
@@ -42,7 +43,6 @@ class _StudentFormPageState extends State<StudentFormPage> {
   String? _duration;
   DateTime? _startDate;
 
-  // 2. 🔴 FIX: Re-adding the missing _courseData map 🔴
   final Map<String, List<String>?> _courseData = {
     'Programming': ['Python Course', 'Java Course', 'C Course', 'C++ Course'],
     'Web Developement': [
@@ -81,8 +81,136 @@ class _StudentFormPageState extends State<StudentFormPage> {
     ],
   };
 
-  // 3. Face Detection Logic
-  // 3. Face Detection Logic - MODIFIED
+  // Dispose method
+  @override
+  void dispose() {
+    _regCtrl.dispose();
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _mobileCtrl.dispose();
+    _pwdCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  // Input decoration with new design
+  InputDecoration _decoration({
+    String? hintText,
+    Widget? prefix,
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: TextStyle(
+        color: Colors.grey[500],
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
+      prefixIcon: prefix,
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderSide: const BorderSide(color: Color(0xFFE0E0E0), width: 1.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Color(0xFFE0E0E0), width: 1.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Color(0xFF282C5C), width: 2),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+    );
+  }
+
+  // Validators
+  String? _required(String? v) =>
+      (v == null || v.trim().isEmpty) ? 'This field is required' : null;
+
+  String? _emailValidator(String? v) {
+    if (v == null || v.isEmpty) return 'Email is required';
+    final regex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    return !regex.hasMatch(v) ? 'Enter a valid email' : null;
+  }
+
+  String? _mobileValidator(String? v) {
+    if (v == null || v.isEmpty) return 'Mobile number is required';
+    if (v.length != 10) return 'Please enter a 10-digit mobile number';
+    return null;
+  }
+
+  void _submit() {
+    FocusScope.of(context).unfocus();
+    // Check if image is selected and verified
+    if (_selectedImage == null || !_imageStatusMessage.startsWith('✅')) {
+      Fluttertoast.showToast(
+        msg: "Please upload a verified image with a clearly visible face.",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        fontSize: 14.0,
+      );
+      return;
+    }
+
+    if (_formKey.currentState!.validate()) {
+      final data = {
+        "reg": _regCtrl.text,
+        "name": _nameCtrl.text,
+        "email": _emailCtrl.text,
+        "mobile": _mobileCtrl.text,
+        "branch": _branch,
+        "course": _course,
+        "subCourse": _subCourse,
+        "type": _type,
+        "duration": _duration,
+        "startDate": _startDate?.toIso8601String(),
+        // Include the image file path/reference for backend upload
+        "image_path": _selectedImage!.path,
+      };
+      Fluttertoast.showToast(
+        msg: "Data Added Successfully",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        textColor: const Color(0xFF282C5C),
+        fontSize: 16.0,
+        backgroundColor: Colors.white,
+      );
+      print(data);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StudentDashboardApp(
+            name: _nameCtrl.text,
+            course: _subCourse ?? _course ?? 'N/A',
+          ),
+        ),
+      );
+    }
+  }
+
+  List<String> _getDurationOptions() {
+    if (_type == "Industrial Training") {
+      return ['45 Days', '2 Months', '6 Months'];
+    } else if (_type == "Vocational Course") {
+      return List.generate(12, (i) => "${i + 1} Month${i > 0 ? 's' : ''}");
+    }
+    return [];
+  }
+
+  //  Face Detection Logic
   Future<bool> _checkForFace(String imagePath) async {
     final inputImage = InputImage.fromFilePath(imagePath);
 
@@ -227,7 +355,7 @@ class _StudentFormPageState extends State<StudentFormPage> {
     } else {
       setState(() {
         _imageStatusMessage = 'Image selection cancelled.';
-        _imageErrorMessage = 'Image selection camcelled';
+        _imageErrorMessage = 'Image selection cancelled';
       });
     }
   }
@@ -320,131 +448,6 @@ class _StudentFormPageState extends State<StudentFormPage> {
     );
   }
 
-  // Dispose method
-  @override
-  void dispose() {
-    _regCtrl.dispose();
-    _nameCtrl.dispose();
-    _emailCtrl.dispose();
-    _mobileCtrl.dispose();
-    _pwdCtrl.dispose();
-    _confirmCtrl.dispose();
-    super.dispose();
-  }
-
-  // Input decoration with new design
-  InputDecoration _decoration({
-    String? hintText,
-    Widget? prefix,
-    Widget? suffix,
-  }) {
-    return InputDecoration(
-      hintText: hintText,
-      hintStyle: TextStyle(
-        color: Colors.grey[500],
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-      ),
-
-      prefixIcon: prefix,
-      suffixIcon: suffix,
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(
-        borderSide: const BorderSide(color: Color(0xFFE0E0E0), width: 1.5),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: Color(0xFFE0E0E0), width: 1.5),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: Color(0xFF282C5C), width: 2),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: Colors.red, width: 1.5),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: Colors.red, width: 2),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
-    );
-  }
-
-  // Validators
-  String? _required(String? v) =>
-      (v == null || v.trim().isEmpty) ? 'This field is required' : null;
-
-  String? _emailValidator(String? v) {
-    if (v == null || v.isEmpty) return 'Email is required';
-    final regex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    return !regex.hasMatch(v) ? 'Enter a valid email' : null;
-  }
-
-  String? _mobileValidator(String? v) {
-    if (v == null || v.isEmpty) return 'Mobile number is required';
-    if (v.length != 10) return 'Please enter a 10-digit mobile number';
-    return null;
-  }
-
-  void _submit() {
-    FocusScope.of(context).unfocus();
-    // Check if image is selected and verified
-    if (_selectedImage == null || !_imageStatusMessage.startsWith('✅')) {
-      Fluttertoast.showToast(
-        msg: "Please upload a verified image with a clearly visible face.",
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.BOTTOM,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 14.0,
-      );
-      return;
-    }
-
-    if (_formKey.currentState!.validate()) {
-      final data = {
-        "reg": _regCtrl.text,
-        "name": _nameCtrl.text,
-        "email": _emailCtrl.text,
-        "mobile": _mobileCtrl.text,
-        "branch": _branch,
-        "course": _course,
-        "subCourse": _subCourse,
-        "type": _type,
-        "duration": _duration,
-        "startDate": _startDate?.toIso8601String(),
-        // Include the image file path/reference for backend upload
-        "image_path": _selectedImage!.path,
-      };
-      Fluttertoast.showToast(
-        msg: "Data Added Successfully",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        textColor: const Color(0xFF282C5C),
-        fontSize: 16.0,
-        backgroundColor: Colors.white,
-      );
-      print(data);
-    }
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const StudentDashboardApp()),
-    );
-  }
-
-  List<String> _getDurationOptions() {
-    if (_type == "Industrial Training") {
-      return ['45 Days', '2 Months', '6 Months'];
-    } else if (_type == "Vocational Course") {
-      return List.generate(12, (i) => "${i + 1} Month${i > 0 ? 's' : ''}");
-    }
-    return [];
-  }
-
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -521,7 +524,9 @@ class _StudentFormPageState extends State<StudentFormPage> {
             return DropdownMenuItem<String>(value: item, child: Text(item));
           }).toList(),
           onChanged: onChanged,
-          validator: isRequired ? (v) => v == null ? "Required" : null : null,
+          validator: isRequired
+              ? (v) => v == null ? "Select $label " : null
+              : null,
           decoration: _decoration(
             prefix: Icon(icon, color: const Color(0xFF282C5C)),
           ).copyWith(hintText: hintText),

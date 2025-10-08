@@ -120,7 +120,7 @@ flutter:
 # flutter spalsh screen formatting
 flutter_native_splash:
   color: "#ffffff"
-  image: assets/images/icon_day5.png
+  image: assets/images/icon_day.png
   # background_image: assets/images/background.png
   color_dark: "#282C5C"
   android_gravity: center
@@ -128,7 +128,7 @@ flutter_native_splash:
   ios: true
   android_12:
     color: "#ffffff"
-    image: assets/images/icon_day5.png
+    image: assets/images/icon_day.png
     # icon_background_color: "#ffffff"
     color_dark: "#282C5C"
     android_gravity: center

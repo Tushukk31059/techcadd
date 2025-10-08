@@ -12,7 +12,14 @@ const Color codingColor = Color(0xFF06B6D4); // Cyan - Coding
 const Color grayBorderColor = Color(0xFF6B7280); // Gray 500
 
 class StudentDashboardApp extends StatelessWidget {
-  const StudentDashboardApp({super.key});
+  final String name;
+  final String course;
+
+  const StudentDashboardApp({
+    super.key,
+    required this.name,
+    required this.course,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -53,13 +60,19 @@ class StudentDashboardApp extends StatelessWidget {
         //   elevation: 4,
         // )
       ),
-      home: const StudentDashboardScreen(),
+      home: StudentDashboardScreen(name: name,course: course,),
     );
   }
 }
 
 class StudentDashboardScreen extends StatelessWidget {
-  const StudentDashboardScreen({super.key});
+  final String name;
+  final String course;
+  const StudentDashboardScreen({
+    super.key,
+    required this.name,
+    required this.course,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -72,24 +85,27 @@ class StudentDashboardScreen extends StatelessWidget {
         backgroundColor: primaryColor,
         // Hide the default drawer icon on desktop
         automaticallyImplyLeading: MediaQuery.of(context).size.width < 1024,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       drawer: MediaQuery.of(context).size.width < 1024
-          ? const SidebarWidget()
+          ?  SidebarWidget(name: name,course: course,)
           : null,
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth > 1024) {
             // Desktop Layout (Fixed Sidebar + Main Content)
-            return const Row(
+            return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SidebarWidget(isDesktop: true),
-                Expanded(child: MainContentArea()),
+                SidebarWidget(isDesktop: true, name: name, course: course),
+                Expanded(
+                  child: MainContentArea(name: name, course: course),
+                ),
               ],
             );
           } else {
             // Mobile/Tablet Layout (Drawer Sidebar + Main Content)
-            return const MainContentArea();
+            return MainContentArea(name: name,course: course,);
           }
         },
       ),
@@ -100,7 +116,15 @@ class StudentDashboardScreen extends StatelessWidget {
 // --- SIDEBAR WIDGET (DRAWER) ---
 class SidebarWidget extends StatelessWidget {
   final bool isDesktop;
-  const SidebarWidget({super.key, this.isDesktop = false});
+  final String name;
+  final String course;
+
+  const SidebarWidget({
+    super.key,
+    this.isDesktop = false,
+    required this.name,
+    required this.course,
+  });
 
   Widget _buildNavLink(IconData icon, String title, {bool isActive = false}) {
     return Padding(
@@ -153,22 +177,31 @@ class SidebarWidget extends StatelessWidget {
           // Logo/App Name
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Techcadd',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: primaryColor,
+            child: Center(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Text(
+                      'Techcadd',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: primaryColor,
+                      ),
+                    ),
                   ),
-                ),
-                Text(
-                  'Student Portal',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                ),
-              ],
+                  Center(
+                    child: Text(
+                      'Student Portal',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const Divider(height: 1, color: Colors.grey),
@@ -193,15 +226,15 @@ class SidebarWidget extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Aniket Sharma',
+                     Text(
+                      name,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
-                      'Course: MERN Stack Dev',
+                      'Course: $course',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade500,
@@ -263,7 +296,14 @@ class SidebarWidget extends StatelessWidget {
 
 // --- MAIN CONTENT AREA ---
 class MainContentArea extends StatelessWidget {
-  const MainContentArea({super.key});
+  final String name;
+  final String course;
+
+  const MainContentArea({
+    super.key,
+    required this.name,
+    required this.course,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -274,7 +314,7 @@ class MainContentArea extends StatelessWidget {
         children: [
           // Header
           Text(
-            'Welcome, Aniket!',
+            'Welcome,$name ',
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w800,
@@ -282,10 +322,10 @@ class MainContentArea extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            'Quick summary of your course.',
-            style: TextStyle(color: Colors.grey.shade500),
-          ),
+          // Text(
+          //   'Quick summary of your course.',
+          //   style: TextStyle(color: Colors.grey.shade500),
+          // ),
           const SizedBox(height: 24),
 
           // Top Row: Attendance and Fee Alert
@@ -379,13 +419,13 @@ class AttendanceCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'Required: 75% | Safe Zone: > 80%',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
+                    // Text(
+                    //   'Required: 75% | Safe Zone: > 80%',
+                    //   style: TextStyle(
+                    //     fontSize: 13,
+                    //     color: Colors.grey.shade500,
+                    //   ),
+                    // ),
                   ],
                 ),
                 Container(
@@ -418,12 +458,16 @@ class AttendanceCard extends StatelessWidget {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      CircularProgressIndicator(
-                        value: 0.72, // 72%
-                        strokeWidth: 10,
-                        backgroundColor: Colors.grey.shade200,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          warningColor,
+                      SizedBox(
+                        height: 60,
+                        width: 60,
+                        child: CircularProgressIndicator(
+                          value: 0.72, // 72%
+                          strokeWidth: 10,
+                          backgroundColor: Colors.grey.shade200,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            warningColor,
+                          ),
                         ),
                       ),
                       Text.rich(
@@ -713,7 +757,7 @@ class TodayTopicCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Time: 2:00 PM - 4:00 PM | Lab: C-Lab 3',
+                    'Time: 2:00 PM - 4:00 PM ',
                     style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
                   ),
                 ],
