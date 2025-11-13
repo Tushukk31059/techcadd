@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:techcadd/employeeform.dart';
-import 'package:techcadd/qr_service.dart';
-import 'package:techcadd/studentform.dart';
-// import 'video_splash_screen.dart';
+import 'package:provider/provider.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:techcadd/api/api_service.dart';
+import 'package:techcadd/api/auth_provider.dart';
+import 'package:techcadd/models/staff_model.dart';
+import 'package:techcadd/views/admin_dashboard.dart';
+// import 'package:techcadd/views/admin_login.dart';
+import 'package:techcadd/views/staff/staff_dashboard_screen.dart';
+import 'package:techcadd/views/student_registration/student_dashboard_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,22 +20,53 @@ Future<void> main() async {
       DeviceOrientation.portraitDown,
     ]);
 
-    runApp(const MyApp());
+    runApp( MultiProvider(
+      providers: [ChangeNotifierProvider(create: (context) => AuthProvider())],
+      child: const MyApp(),
+    ),);
   } catch (e) {
     debugPrint('Error setting orientation: $e');
-   // Always apply your system UI style here
+    
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      systemNavigationBarColor: Color(0xFFF8F9FA), // bottom bar same as bg
+      systemNavigationBarColor: Color(0xFFF8F9FA), 
       systemNavigationBarIconBrightness: Brightness.dark,
-      statusBarColor: Colors.transparent, // transparent lets app bg show
-      statusBarIconBrightness: Brightness.dark, // dark icons on light bg
+      statusBarColor: Colors.transparent, 
+      statusBarIconBrightness: Brightness.dark, 
     ),
   );
     runApp(const MyApp());
   }
 }
 
+class MyAppLifecycleObserver with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached || state == AppLifecycleState.paused) {
+      // Perform cleanup when app is being destroyed or going to background
+      ApiService.staffLogoutOnAppClose();
+    }
+  }
+}
+MaterialColor createMaterialColor(Color color) {
+  List strengths = <double>[.05];
+  final swatch = <int, Color>{};
+  final r = color.red, g = color.green, b = color.blue;
+
+  for (int i = 1; i < 10; i++) {
+    strengths.add(0.1 * i);
+  }
+  for (var strength in strengths) {
+    final ds = 0.5 - strength;
+    swatch[(strength * 1000).round()] = Color.fromRGBO(
+      r + ((ds < 0 ? r : (255 - r)) * ds).round(),
+      g + ((ds < 0 ? g : (255 - g)) * ds).round(),
+      b + ((ds < 0 ? b : (255 - b)) * ds).round(),
+      1,
+    );
+  }
+  return MaterialColor(color.value, swatch);
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -67,7 +104,7 @@ class MyApp extends StatelessWidget {
             secondary: Color(0xFFF8F9FA),
           ),
         ),
-        themeMode: ThemeMode.dark,
+        themeMode: ThemeMode.light,
         home: const LoginScreen(),
       ),
     );
@@ -77,12 +114,22 @@ class MyApp extends StatelessWidget {
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
+  bool _loading=true;
+  final TextEditingController _regController = TextEditingController();
+  final TextEditingController _passController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+final TextEditingController _staffUsernameController = TextEditingController();
+final TextEditingController _staffPasswordController = TextEditingController();
   int selectedIndex = 0;
   int oldIndex = 0;
 
@@ -98,21 +145,73 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    _checkLoginStatus();
     _logoController = AnimationController(
       duration: const Duration(milliseconds: 1600),
       vsync: this,
     );
-
-    _logoAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
-    );
-
+    _logoAnimation = Tween<double>(begin: 0.8, end: 1.0)
+        .animate(CurvedAnimation(parent: _logoController, curve: Curves.elasticOut));
     _logoController.forward();
   }
+  
+// Update the _checkLoginStatus method in login screen
+Future<void> _checkLoginStatus() async {
+  final prefs = await SharedPreferences.getInstance();
+   final isStudentLoggedIn = await ApiService.isStudentLoggedIn();
+  if (isStudentLoggedIn) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => StudentDashboardScreen()),
+    );
+    return;
+  }
+
+ 
+
+  // Check staff auto-login - respect auto-logout setting
+  final shouldAutoLogout = prefs.getBool('staff_auto_logout') ?? true;
+  
+  if (!shouldAutoLogout) {
+    // Auto-logout disabled, check if staff is logged in
+    final isStaffLoggedIn = await ApiService.isStaffLoggedIn();
+    if (isStaffLoggedIn) {
+      try {
+        final staff = await ApiService.getStaffProfile();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StaffDashboardScreen(staff: staff),
+          ),
+        );
+        return;
+      } catch (e) {
+        print('❌ Staff auto-login failed: $e');
+        await ApiService.staffLogout();
+      }
+    }
+  } else {
+    // Auto-logout enabled, clear any existing staff data
+    await ApiService.staffLogoutOnAppClose();
+  }
+
+  // no auto-login
+  setState(() {
+    _loading = false;
+  });
+}
+
 
   @override
   void dispose() {
     _logoController.dispose();
+    _regController.dispose();
+    _passController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+final TextEditingController _staffUsernameController = TextEditingController();
+final TextEditingController _staffPasswordController = TextEditingController();
+
     super.dispose();
   }
 
@@ -128,11 +227,20 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       body: Container(
         height: double.infinity,
         decoration: const BoxDecoration(
-          color:  Color(0xFFF8F9FA)
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF8F9FA), Color(0xFFE9ECEF)],
+          ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -140,6 +248,7 @@ class _LoginScreenState extends State<LoginScreen>
             child: Column(
               children: [
                 const SizedBox(height: 36),
+
                 // Animated Welcome Text
                 AnimatedBuilder(
                   animation: _logoAnimation,
@@ -150,10 +259,7 @@ class _LoginScreenState extends State<LoginScreen>
                         children: [
                           ShaderMask(
                             shaderCallback: (bounds) => const LinearGradient(
-                              colors: [
-                                Color(0xFF282C5C),
-                                Color.fromARGB(255, 40, 44, 92),
-                              ],
+                              colors: [Color(0xFF282C5C), Color(0xFF282C5C)],
                             ).createShader(bounds),
                             child: const Text(
                               'Welcome Back!',
@@ -179,14 +285,18 @@ class _LoginScreenState extends State<LoginScreen>
                     );
                   },
                 ),
-                const SizedBox(height: 28),
+
+                const SizedBox(height: 24),
+
                 Image.asset(
-                  'assets/images/techcadd.png',
+                  "assets/images/techcaddLogo.png",
                   width: 240,
                   height: 69,
                   fit: BoxFit.cover,
                 ),
+
                 const SizedBox(height: 20),
+
                 // Tab Selector
                 AnimatedUserTypeSelector(
                   userTypes: userTypes,
@@ -194,8 +304,11 @@ class _LoginScreenState extends State<LoginScreen>
                   selectedIndex: selectedIndex,
                   onTabChanged: _onTabChanged,
                 ),
+
                 const SizedBox(height: 30),
-                // Swipeable Content Area
+
+                // Swipeable Content Area with PageTransitionSwitcher
+                // Swipeable Content Area (NO animation, instant switch)
                 GestureDetector(
                   onHorizontalDragEnd: (details) {
                     if (details.primaryVelocity! > 0 && selectedIndex > 0) {
@@ -232,49 +345,22 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  // ------------------- Forms -------------------
+
   Widget _buildStudentForm() {
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(26),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
+          decoration: _cardDecoration(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.school,
-                      color: Color(0xFF282C5C),
-                      size: 24,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Student Login',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF282C5C),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _formHeader(Icons.school, 'Student Login'),
               const SizedBox(height: 16),
               _buildTextField(
                 label: 'Registration Number',
+                controller: _regController,
                 icon: Icons.badge,
                 hintText: 'Enter Registration Number',
               ),
@@ -284,152 +370,92 @@ class _LoginScreenState extends State<LoginScreen>
                 icon: Icons.lock,
                 hintText: 'Enter your password',
                 isPassword: true,
+                controller: _passController
               ),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                  },
-                  child: Text(
+                  onPressed: () => HapticFeedback.lightImpact(),
+                  child: const Text(
                     'Forgot Password?',
                     style: TextStyle(
-                      color: const Color(0xFF282C5C),
+                      color: Color(0xFF282C5C),
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
-              _buildSignInButton(),
+              _buildStudentSignInButton(),
+              SizedBox(height: 10),
+              // Center(child: _buildNewRegistrationButton()),
             ],
           ),
         ),
         const SizedBox(height: 6),
-        _buildNewRegistrationButton(),
       ],
     );
   }
 
   Widget _buildEmployerForm() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(26),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.business,
-                      color: Color(0xFF282C5C),
-                      size: 24,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Employer Login',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF282C5C),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                label: 'Email Address',
-                icon: Icons.email,
-                hintText: 'Enter your email address',
-              ),
-              const SizedBox(height: 10),
-              _buildTextField(
-                label: 'Password',
-                icon: Icons.lock,
-                hintText: 'Enter your password',
-                isPassword: true,
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                  },
-                  child: Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                      color: const Color(0xFF282C5C),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+  return Column(
+    children: [
+      Container(
+        padding: const EdgeInsets.all(24),
+        decoration: _cardDecoration(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _formHeader(Icons.business, 'Staff Login'),
+            const SizedBox(height: 16),
+            _buildTextField(
+              label: 'Username',
+              controller: _staffUsernameController,
+              icon: Icons.person,
+              hintText: 'Enter your username',
+            ),
+            const SizedBox(height: 10),
+            _buildTextField(
+              label: 'Password',
+              controller: _staffPasswordController,
+              icon: Icons.lock,
+              hintText: 'Enter your password',
+              isPassword: true,
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => HapticFeedback.lightImpact(),
+                child: const Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    color: Color(0xFF282C5C),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              _buildSignInButton(),
-            ],
-          ),
+            ),
+            _buildStaffSignInButton(),
+            const SizedBox(height: 10),
+          ],
         ),
-        const SizedBox(height: 6),
-        _buildNewEmpRegistrationButton(),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
 
   Widget _buildAdminForm() {
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(26),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
+          decoration: _cardDecoration(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.admin_panel_settings,
-                      color: Color(0xFF282C5C),
-                      size: 24,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Admin Access',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF282C5C),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _formHeader(Icons.admin_panel_settings, 'Admin Access'),
               const SizedBox(height: 32),
               Container(
                 decoration: BoxDecoration(
@@ -437,10 +463,10 @@ class _LoginScreenState extends State<LoginScreen>
                   border: Border.all(color: Colors.grey[300]!, width: 1.5),
                 ),
                 child: DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.all(16),
-                    prefixIcon: const Icon(
+                    contentPadding: EdgeInsets.all(16),
+                    prefixIcon: Icon(
                       Icons.account_tree,
                       color: Color(0xFF282C5C),
                     ),
@@ -449,7 +475,7 @@ class _LoginScreenState extends State<LoginScreen>
                     'Select Branch',
                     style: TextStyle(color: Colors.grey[600], fontSize: 16),
                   ),
-                  items: [
+                  items: const [
                     DropdownMenuItem(
                       value: 'Jalandhar-I',
                       child: const Text('Jalandhar-I'),
@@ -475,15 +501,190 @@ class _LoginScreenState extends State<LoginScreen>
                       child: const Text("Chandigarh"),
                     ),
                   ],
-                  onChanged: (value) {
-                    HapticFeedback.lightImpact();
-                  },
+                  onChanged: (value) => HapticFeedback.lightImpact(),
                 ),
               ),
-              const SizedBox(height: 32),
-              _buildSignInButton(),
+              const SizedBox(height: 20),
+              
+                    _buildTextField(
+                      label: 'Username',
+                      controller: _usernameController,
+                      icon: Icons.person,
+                      hintText: 'Enter your username',
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Password Field
+                    _buildTextField(
+                      label: 'Password',
+                      controller: _passwordController,
+                      icon: Icons.lock,
+                      hintText: 'Enter your password',
+                      isPassword: true,
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // Login Button
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : _buildLoginButton(context),
+
+                    const SizedBox(height: 20),
+
+                    // Error Message
+                    Consumer<AuthProvider>(
+                      builder: (context, authProvider, child) {
+                        if (authProvider.errorMessage.isNotEmpty) {
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error, color: Colors.red[400]),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    authProvider.errorMessage,
+                                    style: TextStyle(color: Colors.red[700]),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.close,
+                                    color: Colors.red[400],
+                                  ),
+                                  onPressed: () => authProvider.clearError(),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        return const SizedBox();
+                      },
+                    ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+
+  
+  Widget _buildLoginButton(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF282C5C), Color(0xFF282C5C)],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF282C5C).withAlpha(26),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        // In your login button onPressed
+onPressed: () async {
+  final username = _usernameController.text.trim();
+  final password = _passwordController.text.trim();
+
+  if (username.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please fill all fields')),
+    );
+    return;
+  }
+
+  setState(() => _isLoading = true);
+  
+  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  final success = await authProvider.login(username, password);
+  
+  if (success) {
+    // DEBUG: Check tokens immediately after login
+    await ApiService.debugStoredTokens();
+    
+    // Try to get profile to verify token works
+    try {
+      final profile = await ApiService.getAdminProfile();
+      print('✅ Profile fetched successfully after login');
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => AdminMobileConsole()),
+      );
+    } catch (e) {
+      print('❌ Profile fetch failed after login: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login successful but token issue: $e')),
+      );
+    }
+  }
+  
+  setState(() => _isLoading = false);
+},
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+        ),
+        child: const Text(
+          'Sign In',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+
+
+  Widget _formHeader(IconData icon, String title) {
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: const Color(0xFF282C5C), size: 24),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF282C5C),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(24),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withAlpha(26),
+          blurRadius: 20,
+          offset: const Offset(0, 10),
         ),
       ],
     );
@@ -492,6 +693,7 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildTextField({
     required String label,
     required IconData icon,
+    TextEditingController? controller,
     required String hintText,
     bool isPassword = false,
   }) {
@@ -514,6 +716,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           child: TextField(
             obscureText: isPassword,
+            controller: controller,
             decoration: InputDecoration(
               border: InputBorder.none,
               hintText: hintText,
@@ -528,109 +731,219 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildSignInButton() {
-    return Container(
-      width: double.infinity,
-      height: 46,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF282C5C), Color.fromARGB(255, 47, 82, 121)],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF282C5C).withAlpha(26),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+  Widget _buildStudentSignInButton() {
+  return Column(
+    children: [
+      Container(
+        width: double.infinity,
+        height: 46,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF282C5C), Color(0xFF282C5C)],
           ),
-        ],
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFF282C5C).withAlpha(26),
+              blurRadius: 12,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: () async {
+            HapticFeedback.lightImpact();
+            final username = _regController.text.trim();
+            final password = _passController.text.trim();
+
+            if (username.isEmpty || password.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Please fill all fields')),
+              );
+              return;
+            }
+
+            try {
+              setState(() => _isLoading = true);
+              
+              final response = await ApiService.studentLogin(username, password);
+              
+              if (response['success'] == true) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Student login successful!')),
+                );
+                
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StudentDashboardScreen(),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Invalid username or password')),
+                );
+              }
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Login failed: ${e.toString()}')),
+              );
+            } finally {
+              setState(() => _isLoading = false);
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+          ),
+          child: Text(
+            'Sign In',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
       ),
-      child: ElevatedButton(
-        onPressed: () {
-          HapticFeedback.lightImpact();
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
+      
+      // Loader
+      if (_isLoading) ...[
+        SizedBox(height: 20),
+        CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF282C5C)),
         ),
-        child: const Text(
-          'Sign In',
+        SizedBox(height: 10),
+        Text(
+          'Signing in...',
           style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            color: Color(0xFF282C5C),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    ],
+  );
+}
+
+
+Widget _buildStaffSignInButton() {
+  return Column(
+    children: [
+      Container(
+        width: double.infinity,
+        height: 46,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF282C5C), Color(0xFF282C5C)],
+          ),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF282C5C).withAlpha(26),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: () async {
+            HapticFeedback.lightImpact();
+            final username = _staffUsernameController.text.trim();
+            final password = _staffPasswordController.text.trim();
+
+            if (username.isEmpty || password.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please fill all fields')),
+              );
+              return;
+            }
+
+            try {
+              setState(() => _loading = true);
+              
+              final response = await ApiService.staffLogin(username, password);
+              
+              if (response['success'] == true) {
+                final staffData = response['staff'];
+                final staff = StaffProfile.fromJson(staffData);
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Staff login successful!')),
+                );
+                
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StaffDashboardScreen(staff: staff),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Invalid username or password')),
+                );
+              }
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Login failed: ${e.toString()}')),
+              );
+            } finally {
+              setState(() => _loading = false);
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+          ),
+          child: const Text(
+            'Sign In',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildNewRegistrationButton() {
-    return TextButton(
-      onPressed: () {
-        HapticFeedback.lightImpact();
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => StudentFormPage()),
-        );
-      },
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.person_add, color: Color(0xFF282C5C), size: 20),
-          const SizedBox(width: 8),
-          Text(
-            'New Registration? Click here',
-            style: TextStyle(
-              color: const Color(0xFF282C5C),
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+      
+      // Loader below the form (like admin login)
+      if (_loading) ...[
+        const SizedBox(height: 20),
+        const CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF282C5C)),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Signing in...',
+          style: TextStyle(
+            color: Color(0xFF282C5C),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNewEmpRegistrationButton() {
-    return TextButton(
-      onPressed: () {
-        HapticFeedback.lightImpact();
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => QRScan()),
-        );
-      },
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.person_add, color: Color(0xFF282C5C), size: 20),
-          const SizedBox(width: 8),
-          Text(
-            'Not Registered? Click here',
-            style: TextStyle(
-              color: const Color(0xFF282C5C),
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ],
+  );
 }
+  
+
+  
+}
+
+
 
 class AnimatedUserTypeSelector extends StatefulWidget {
   final List<String> userTypes;
@@ -651,25 +964,7 @@ class AnimatedUserTypeSelector extends StatefulWidget {
       _AnimatedUserTypeSelectorState();
 }
 
-class _AnimatedUserTypeSelectorState extends State<AnimatedUserTypeSelector>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
+class _AnimatedUserTypeSelectorState extends State<AnimatedUserTypeSelector> {
   @override
   Widget build(BuildContext context) {
     final tabWidth = (MediaQuery.of(context).size.width - 32) / 3;
@@ -700,8 +995,6 @@ class _AnimatedUserTypeSelectorState extends State<AnimatedUserTypeSelector>
               width: tabWidth,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                   colors: [Color(0xFF282C5C), Color(0xFF282C5C)],
                 ),
                 borderRadius: BorderRadius.circular(24),
@@ -726,9 +1019,7 @@ class _AnimatedUserTypeSelectorState extends State<AnimatedUserTypeSelector>
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    if (index != widget.selectedIndex) {
-                      widget.onTabChanged(index);
-                    }
+                    if (!isSelected) widget.onTabChanged(index);
                   },
                   child: SizedBox(
                     height: 48,
@@ -736,15 +1027,10 @@ class _AnimatedUserTypeSelectorState extends State<AnimatedUserTypeSelector>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            child: Icon(
-                              icon,
-                              color: isSelected
-                                  ? Colors.white
-                                  : Colors.grey[600],
-                              size: 18,
-                            ),
+                          Icon(
+                            icon,
+                            color: isSelected ? Colors.white : Colors.grey[600],
+                            size: 16,
                           ),
                           if (isSelected) ...[
                             const SizedBox(width: 6),
@@ -753,8 +1039,7 @@ class _AnimatedUserTypeSelectorState extends State<AnimatedUserTypeSelector>
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
-                                //top navigation button size
-                                fontSize: 18,
+                                fontSize: 14,
                               ),
                               child: Text(userType),
                             ),
