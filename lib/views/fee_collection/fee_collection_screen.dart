@@ -1,6 +1,7 @@
 // lib/views/fee_collection/fee_collection_screen.dart
 import 'package:flutter/material.dart';
 import 'package:techcadd/api/api_service.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 import 'package:techcadd/views/fee_collection/add_fee_dialog.dart';
 
 class FeeCollectionScreen extends StatefulWidget {
@@ -41,9 +42,8 @@ class _FeeCollectionScreenState extends State<FeeCollectionScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load data: $e')),
-      );
+     CustomSnackBar.showError(context: context, message: "Failed to load data");
+           
     }
   }
 
@@ -87,9 +87,8 @@ class _FeeCollectionScreenState extends State<FeeCollectionScreen> {
         pendingFee: pendingFee,
         onFeeAdded: () {
           _refreshData(); // Refresh the list
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Fee added successfully!')),
-          );
+          CustomSnackBar.showSuccess(context: context, message: "Fee added Successfully");
+           
         },
       ),
     );

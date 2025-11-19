@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:techcadd/api/api_service.dart';
 import 'package:techcadd/models/dropdown_models.dart';
 import 'package:techcadd/models/staff_model.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 import 'package:techcadd/views/certificate_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ import 'package:techcadd/views/enquiry/create_enquiry_screen.dart';
 import 'package:techcadd/views/enquiry/enquiry_screen.dart';
 import 'package:techcadd/views/fee_collection/fee_collection_screen.dart';
 import 'package:techcadd/views/student_registration/registration_screen.dart';
+import 'package:techcadd/views/student_registration/student_credential_screen.dart';
 
 class StaffDashboardScreen extends StatefulWidget {
   final StaffProfile staff;
@@ -153,8 +155,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
     );
   }
 }
-// Staff Drawer - Updated with complete counselor options
-// Staff Drawer - Updated without logout button
+
 class StaffDrawer extends StatelessWidget {
   final StaffProfile staff;
   final int currentIndex;
@@ -225,7 +226,7 @@ class StaffDrawer extends StatelessWidget {
               ),
             ),
 
-            // Navigation Items - Role Specific
+
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -293,13 +294,7 @@ class StaffDrawer extends StatelessWidget {
             ),
           ),
         ),
-        _buildDrawerItem(
-          context,
-          Icons.account_balance_wallet,
-          'Fee Reports',
-          -1,
-        ),
-
+    
         _buildDrawerItem(
           context,
           Icons.workspace_premium_outlined,
@@ -312,7 +307,6 @@ class StaffDrawer extends StatelessWidget {
       // Default items for other roles (Trainer, Manager)
       return [
         _buildDrawerItem(context, Icons.dashboard_rounded, 'Dashboard', 0),
-
         _buildDrawerItem(context, Icons.school_rounded, 'My Classes', -1),
         _buildDrawerItem(context, Icons.assignment_rounded, 'Assignments', -1),
       ];
@@ -377,7 +371,8 @@ class StaffDrawer extends StatelessWidget {
       ),
     );
   }
-}// Staff Home Screen
+} // Staff Home Screen
+
 class StaffHomeScreen extends StatefulWidget {
   final VoidCallback? onRefresh;
   const StaffHomeScreen({super.key, required this.onRefresh});
@@ -386,7 +381,8 @@ class StaffHomeScreen extends StatefulWidget {
   State<StaffHomeScreen> createState() => _StaffHomeScreenState();
 }
 
-class _StaffHomeScreenState extends State<StaffHomeScreen> with WidgetsBindingObserver {
+class _StaffHomeScreenState extends State<StaffHomeScreen>
+    with WidgetsBindingObserver {
   Map<String, dynamic> _dashboardStats = {};
   bool _isLoading = true;
 
@@ -468,7 +464,6 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> with WidgetsBindingOb
   }
 
   Widget _buildQuickStats() {
-    
     return GridView.count(
       crossAxisCount: 2,
       crossAxisSpacing: 16,
@@ -541,13 +536,16 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> with WidgetsBindingOb
                     builder: (context) => FutureBuilder<DropdownChoices>(
                       future: ApiService.getEnquiryDropdownChoices(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return Scaffold(
                             appBar: AppBar(
                               title: const Text('Create Enquiry'),
                               backgroundColor: const Color(0xFF282C5C),
                             ),
-                            body: const Center(child: CircularProgressIndicator()),
+                            body: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                           );
                         }
                         if (snapshot.hasError) {
@@ -560,7 +558,11 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> with WidgetsBindingOb
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.error, size: 64, color: Colors.red),
+                                  const Icon(
+                                    Icons.error,
+                                    size: 64,
+                                    color: Colors.red,
+                                  ),
                                   const SizedBox(height: 16),
                                   Text('Error: ${snapshot.error}'),
                                   const SizedBox(height: 16),
@@ -576,9 +578,11 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> with WidgetsBindingOb
                         return CreateEnquiryScreen(
                           dropdownChoices: snapshot.data!,
                           onEnquiryCreated: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Enquiry created successfully!')),
+                            CustomSnackBar.showSuccess(
+                              context: context,
+                              message: "Enquiry Created Successfully",
                             );
+
                             _loadDashboardData();
                           },
                         );
@@ -710,11 +714,12 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> with WidgetsBindingOb
   }
 
   void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature - Coming Soon!')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$feature - Coming Soon!')));
   }
-}// Stat Card Widget
+} // Stat Card Widget
+
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;

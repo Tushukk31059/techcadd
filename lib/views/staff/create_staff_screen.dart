@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:techcadd/api/api_service.dart';
 import 'package:techcadd/models/staff_model.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 
 
 class CreateStaffScreen extends StatefulWidget {
@@ -76,12 +77,8 @@ final List<String> _roles = [
 
       final response = await ApiService.createStaffAccount(staffData);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(response['message'] ?? 'Staff account created successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
+       CustomSnackBar.showSuccess(context: context, message: response['message'] ?? 'Staff account created successfully');
+           
       
       // Clear form and go back
       _formKey.currentState!.reset();
@@ -91,12 +88,8 @@ final List<String> _roles = [
       setState(() {
         _errorMessage = e.toString();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to create staff: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomSnackBar.showError(context: context, message: "Failed to Create Staff: $e");
+           
     } finally {
       setState(() => _isLoading = false);
     }

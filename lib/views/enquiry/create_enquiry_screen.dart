@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:techcadd/api/api_service.dart';
 import 'package:techcadd/models/dropdown_models.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 
 
 class CreateEnquiryScreen extends StatefulWidget {
@@ -44,17 +45,7 @@ class _CreateEnquiryScreenState extends State<CreateEnquiryScreen> {
     }).join(' ');
   }
 
-  String _formatCourseName(String course) {
-    // Handle common course name formatting
-    final formatted = course.replaceAll('_', ' ');
-    return _capitalizeWords(formatted);
-  }
 
-  String _formatStatus(String status) {
-    // Handle status formatting
-    final formatted = status.replaceAll('_', ' ');
-    return _capitalizeWords(formatted);
-  }
 
   // Text Input Formatters
   final TextInputFormatter _nameFormatter = TextInputFormatter.withFunction(
@@ -297,23 +288,15 @@ Future<void> _submitEnquiry() async {
     
     await ApiService.createEnquiry(enquiryData);
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Enquiry created successfully!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    CustomSnackBar.showSuccess(context: context, message: "Enquiry Created Successfully");
+           
     
     widget.onEnquiryCreated();
     Navigator.pop(context);
     
   } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed to create enquiry: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
+   CustomSnackBar.showError(context: context, message: "Failed to Create Enquiry");
+           
   } finally {
     setState(() => _isSubmitting = false);
   }

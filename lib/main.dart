@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:techcadd/api/api_service.dart';
 import 'package:techcadd/api/auth_provider.dart';
 import 'package:techcadd/models/staff_model.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 import 'package:techcadd/views/admin_dashboard.dart';
-// import 'package:techcadd/views/admin_login.dart';
 import 'package:techcadd/views/staff/staff_dashboard_screen.dart';
 import 'package:techcadd/views/student_registration/student_dashboard_screen.dart';
 
@@ -20,21 +19,25 @@ Future<void> main() async {
       DeviceOrientation.portraitDown,
     ]);
 
-    runApp( MultiProvider(
-      providers: [ChangeNotifierProvider(create: (context) => AuthProvider())],
-      child: const MyApp(),
-    ),);
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => AuthProvider()),
+        ],
+        child: const MyApp(),
+      ),
+    );
   } catch (e) {
     debugPrint('Error setting orientation: $e');
-    
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      systemNavigationBarColor: Color(0xFFF8F9FA), 
-      systemNavigationBarIconBrightness: Brightness.dark,
-      statusBarColor: Colors.transparent, 
-      statusBarIconBrightness: Brightness.dark, 
-    ),
-  );
+
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        systemNavigationBarColor: Color(0xFFF8F9FA),
+        systemNavigationBarIconBrightness: Brightness.dark,
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
     runApp(const MyApp());
   }
 }
@@ -42,12 +45,14 @@ Future<void> main() async {
 class MyAppLifecycleObserver with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.detached || state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.detached ||
+        state == AppLifecycleState.paused) {
       // Perform cleanup when app is being destroyed or going to background
       ApiService.staffLogoutOnAppClose();
     }
   }
 }
+
 MaterialColor createMaterialColor(Color color) {
   List strengths = <double>[.05];
   final swatch = <int, Color>{};
@@ -73,7 +78,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
- 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent, // gradient ke liye transparent
@@ -85,6 +89,12 @@ class MyApp extends StatelessWidget {
         title: 'Tech Login',
         //light theme
         theme: ThemeData(
+          snackBarTheme: SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
           // brightness: Brightness.light,
           fontFamily: 'SF Pro Display',
           scaffoldBackgroundColor: const Color(0xFFF8F9FA),
@@ -114,22 +124,23 @@ class MyApp extends StatelessWidget {
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
-  bool _loading=true;
+  bool _loading = true;
   final TextEditingController _regController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
-final TextEditingController _staffUsernameController = TextEditingController();
-final TextEditingController _staffPasswordController = TextEditingController();
+  final TextEditingController _staffUsernameController =
+      TextEditingController();
+  final TextEditingController _staffPasswordController =
+      TextEditingController();
   int selectedIndex = 0;
   int oldIndex = 0;
 
@@ -150,57 +161,55 @@ final TextEditingController _staffPasswordController = TextEditingController();
       duration: const Duration(milliseconds: 1600),
       vsync: this,
     );
-    _logoAnimation = Tween<double>(begin: 0.8, end: 1.0)
-        .animate(CurvedAnimation(parent: _logoController, curve: Curves.elasticOut));
+    _logoAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
+    );
     _logoController.forward();
   }
-  
-// Update the _checkLoginStatus method in login screen
-Future<void> _checkLoginStatus() async {
-  final prefs = await SharedPreferences.getInstance();
-   final isStudentLoggedIn = await ApiService.isStudentLoggedIn();
-  if (isStudentLoggedIn) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => StudentDashboardScreen()),
-    );
-    return;
-  }
 
- 
-
-  // Check staff auto-login - respect auto-logout setting
-  final shouldAutoLogout = prefs.getBool('staff_auto_logout') ?? true;
-  
-  if (!shouldAutoLogout) {
-    // Auto-logout disabled, check if staff is logged in
-    final isStaffLoggedIn = await ApiService.isStaffLoggedIn();
-    if (isStaffLoggedIn) {
-      try {
-        final staff = await ApiService.getStaffProfile();
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => StaffDashboardScreen(staff: staff),
-          ),
-        );
-        return;
-      } catch (e) {
-        print('❌ Staff auto-login failed: $e');
-        await ApiService.staffLogout();
-      }
+  // Update the _checkLoginStatus method in login screen
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isStudentLoggedIn = await ApiService.isStudentLoggedIn();
+    if (isStudentLoggedIn) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => StudentDashboardScreen()),
+      );
+      return;
     }
-  } else {
-    // Auto-logout enabled, clear any existing staff data
-    await ApiService.staffLogoutOnAppClose();
+
+    // Check staff auto-login - respect auto-logout setting
+    final shouldAutoLogout = prefs.getBool('staff_auto_logout') ?? true;
+
+    if (!shouldAutoLogout) {
+      // Auto-logout disabled, check if staff is logged in
+      final isStaffLoggedIn = await ApiService.isStaffLoggedIn();
+      if (isStaffLoggedIn) {
+        try {
+          final staff = await ApiService.getStaffProfile();
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => StaffDashboardScreen(staff: staff),
+            ),
+          );
+          return;
+        } catch (e) {
+          print('❌ Staff auto-login failed: $e');
+          await ApiService.staffLogout();
+        }
+      }
+    } else {
+      // Auto-logout enabled, clear any existing staff data
+      await ApiService.staffLogoutOnAppClose();
+    }
+
+    // no auto-login
+    setState(() {
+      _loading = false;
+    });
   }
-
-  // no auto-login
-  setState(() {
-    _loading = false;
-  });
-}
-
 
   @override
   void dispose() {
@@ -209,8 +218,10 @@ Future<void> _checkLoginStatus() async {
     _passController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
-final TextEditingController _staffUsernameController = TextEditingController();
-final TextEditingController _staffPasswordController = TextEditingController();
+    final TextEditingController _staffUsernameController =
+        TextEditingController();
+    final TextEditingController _staffPasswordController =
+        TextEditingController();
 
     super.dispose();
   }
@@ -228,9 +239,7 @@ final TextEditingController _staffPasswordController = TextEditingController();
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return Scaffold(
       body: Container(
@@ -362,7 +371,7 @@ final TextEditingController _staffPasswordController = TextEditingController();
                 label: 'Registration Number',
                 controller: _regController,
                 icon: Icons.badge,
-                hintText: 'Enter Registration Number',
+                hintText: 'EnterUsername',
               ),
               const SizedBox(height: 10),
               _buildTextField(
@@ -370,7 +379,7 @@ final TextEditingController _staffPasswordController = TextEditingController();
                 icon: Icons.lock,
                 hintText: 'Enter your password',
                 isPassword: true,
-                controller: _passController
+                controller: _passController,
               ),
               Align(
                 alignment: Alignment.centerRight,
@@ -398,54 +407,52 @@ final TextEditingController _staffPasswordController = TextEditingController();
   }
 
   Widget _buildEmployerForm() {
-  return Column(
-    children: [
-      Container(
-        padding: const EdgeInsets.all(24),
-        decoration: _cardDecoration(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _formHeader(Icons.business, 'Staff Login'),
-            const SizedBox(height: 16),
-            _buildTextField(
-              label: 'Username',
-              controller: _staffUsernameController,
-              icon: Icons.person,
-              hintText: 'Enter your username',
-            ),
-            const SizedBox(height: 10),
-            _buildTextField(
-              label: 'Password',
-              controller: _staffPasswordController,
-              icon: Icons.lock,
-              hintText: 'Enter your password',
-              isPassword: true,
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => HapticFeedback.lightImpact(),
-                child: const Text(
-                  'Forgot Password?',
-                  style: TextStyle(
-                    color: Color(0xFF282C5C),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: _cardDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _formHeader(Icons.business, 'Staff Login'),
+              const SizedBox(height: 16),
+              _buildTextField(
+                label: 'Username',
+                controller: _staffUsernameController,
+                icon: Icons.person,
+                hintText: 'Enter your username',
+              ),
+              const SizedBox(height: 10),
+              _buildTextField(
+                label: 'Password',
+                controller: _staffPasswordController,
+                icon: Icons.lock,
+                hintText: 'Enter your password',
+                isPassword: true,
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => HapticFeedback.lightImpact(),
+                  child: const Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      color: Color(0xFF282C5C),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
-            ),
-            _buildStaffSignInButton(),
-            const SizedBox(height: 10),
-          ],
+              _buildStaffSignInButton(),
+              const SizedBox(height: 10),
+            ],
+          ),
         ),
-      ),
-    ],
-  );
-}
-
-
+      ],
+    );
+  }
   Widget _buildAdminForm() {
     return Column(
       children: [
@@ -505,69 +512,66 @@ final TextEditingController _staffPasswordController = TextEditingController();
                 ),
               ),
               const SizedBox(height: 20),
-              
-                    _buildTextField(
-                      label: 'Username',
-                      controller: _usernameController,
-                      icon: Icons.person,
-                      hintText: 'Enter your username',
-                    ),
 
-                    const SizedBox(height: 20),
+              _buildTextField(
+                label: 'Username',
+                controller: _usernameController,
+                icon: Icons.person,
+                hintText: 'Enter your username',
+              ),
 
-                    // Password Field
-                    _buildTextField(
-                      label: 'Password',
-                      controller: _passwordController,
-                      icon: Icons.lock,
-                      hintText: 'Enter your password',
-                      isPassword: true,
-                    ),
+              const SizedBox(height: 20),
 
-                    const SizedBox(height: 30),
+              // Password Field
+              _buildTextField(
+                label: 'Password',
+                controller: _passwordController,
+                icon: Icons.lock,
+                hintText: 'Enter your password',
+                isPassword: true,
+              ),
 
-                    // Login Button
-                    _isLoading
-                        ? const CircularProgressIndicator()
-                        : _buildLoginButton(context),
+              const SizedBox(height: 30),
 
-                    const SizedBox(height: 20),
+              // Login Button
+              _isLoading
+                  ? const CircularProgressIndicator()
+                  : _buildLoginButton(context),
 
-                    // Error Message
-                    Consumer<AuthProvider>(
-                      builder: (context, authProvider, child) {
-                        if (authProvider.errorMessage.isNotEmpty) {
-                          return Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.red[50],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red),
+              const SizedBox(height: 20),
+
+              // Error Message
+              Consumer<AuthProvider>(
+                builder: (context, authProvider, child) {
+                  if (authProvider.errorMessage.isNotEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error, color: Colors.red[400]),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              authProvider.errorMessage,
+                              style: TextStyle(color: Colors.red[700]),
                             ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.error, color: Colors.red[400]),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    authProvider.errorMessage,
-                                    style: TextStyle(color: Colors.red[700]),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.close,
-                                    color: Colors.red[400],
-                                  ),
-                                  onPressed: () => authProvider.clearError(),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                        return const SizedBox();
-                      },
-                    ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.close, color: Colors.red[400]),
+                            onPressed: () => authProvider.clearError(),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox();
+                },
+              ),
             ],
           ),
         ),
@@ -575,8 +579,6 @@ final TextEditingController _staffPasswordController = TextEditingController();
     );
   }
 
-
-  
   Widget _buildLoginButton(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -596,45 +598,45 @@ final TextEditingController _staffPasswordController = TextEditingController();
       ),
       child: ElevatedButton(
         // In your login button onPressed
-onPressed: () async {
-  final username = _usernameController.text.trim();
-  final password = _passwordController.text.trim();
+        onPressed: () async {
+          final username = _usernameController.text.trim();
+          final password = _passwordController.text.trim();
 
-  if (username.isEmpty || password.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please fill all fields')),
-    );
-    return;
-  }
+          if (username.isEmpty || password.isEmpty) {
+            CustomSnackBar.showWarning(context: context, message: "Please fill all the fields");
+            return;
+          }
 
-  setState(() => _isLoading = true);
-  
-  final authProvider = Provider.of<AuthProvider>(context, listen: false);
-  final success = await authProvider.login(username, password);
-  
-  if (success) {
-    // DEBUG: Check tokens immediately after login
-    await ApiService.debugStoredTokens();
-    
-    // Try to get profile to verify token works
-    try {
-      final profile = await ApiService.getAdminProfile();
-      print('✅ Profile fetched successfully after login');
-      
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => AdminMobileConsole()),
-      );
-    } catch (e) {
-      print('❌ Profile fetch failed after login: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login successful but token issue: $e')),
-      );
-    }
-  }
-  
-  setState(() => _isLoading = false);
-},
+          setState(() => _isLoading = true);
+
+          final authProvider = Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          );
+          final success = await authProvider.login(username, password);
+
+          if (success) {
+            // DEBUG: Check tokens immediately after login
+            await ApiService.debugStoredTokens();
+
+            // Try to get profile to verify token works
+            try {
+              final profile = await ApiService.getAdminProfile();
+              print('✅ Profile fetched successfully after login');
+
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => AdminMobileConsole()),
+              );
+            } catch (e) {
+              print('❌ Profile fetch failed after login: $e');
+              CustomSnackBar.showError(context: context, message: "Login successful but token issue: $e");
+           
+            }
+          }
+
+          setState(() => _isLoading = false);
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
@@ -653,8 +655,6 @@ onPressed: () async {
       ),
     );
   }
-
-
 
   Widget _formHeader(IconData icon, String title) {
     return Center(
@@ -732,218 +732,210 @@ onPressed: () async {
   }
 
   Widget _buildStudentSignInButton() {
-  return Column(
-    children: [
-      Container(
-        width: double.infinity,
-        height: 46,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF282C5C), Color(0xFF282C5C)],
-          ),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0xFF282C5C).withAlpha(26),
-              blurRadius: 12,
-              offset: Offset(0, 6),
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          height: 46,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF282C5C), Color(0xFF282C5C)],
             ),
-          ],
-        ),
-        child: ElevatedButton(
-          onPressed: () async {
-            HapticFeedback.lightImpact();
-            final username = _regController.text.trim();
-            final password = _passController.text.trim();
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFF282C5C).withAlpha(26),
+                blurRadius: 12,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: () async {
+              HapticFeedback.lightImpact();
+              final username = _regController.text.trim();
+              final password = _passController.text.trim();
 
-            if (username.isEmpty || password.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Please fill all fields')),
-              );
-              return;
-            }
-
-            try {
-              setState(() => _isLoading = true);
-              
-              final response = await ApiService.studentLogin(username, password);
-              
-              if (response['success'] == true) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Student login successful!')),
-                );
-                
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => StudentDashboardScreen(),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Invalid username or password')),
-                );
+              if (username.isEmpty || password.isEmpty) {
+                CustomSnackBar.showWarning(context: context, message: "Please fill all the fields");
+           
+                return;
               }
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Login failed: ${e.toString()}')),
-              );
-            } finally {
-              setState(() => _isLoading = false);
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
-            ),
-          ),
-          child: Text(
-            'Sign In',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-      ),
-      
-      // Loader
-      if (_isLoading) ...[
-        SizedBox(height: 20),
-        CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF282C5C)),
-        ),
-        SizedBox(height: 10),
-        Text(
-          'Signing in...',
-          style: TextStyle(
-            color: Color(0xFF282C5C),
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    ],
-  );
-}
 
+              try {
+                setState(() => _isLoading = true);
 
-Widget _buildStaffSignInButton() {
-  return Column(
-    children: [
-      Container(
-        width: double.infinity,
-        height: 46,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF282C5C), Color(0xFF282C5C)],
-          ),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF282C5C).withAlpha(26),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: ElevatedButton(
-          onPressed: () async {
-            HapticFeedback.lightImpact();
-            final username = _staffUsernameController.text.trim();
-            final password = _staffPasswordController.text.trim();
-
-            if (username.isEmpty || password.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please fill all fields')),
-              );
-              return;
-            }
-
-            try {
-              setState(() => _loading = true);
-              
-              final response = await ApiService.staffLogin(username, password);
-              
-              if (response['success'] == true) {
-                final staffData = response['staff'];
-                final staff = StaffProfile.fromJson(staffData);
-                
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Staff login successful!')),
+                final response = await ApiService.studentLogin(
+                  username,
+                  password,
                 );
-                
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => StaffDashboardScreen(staff: staff),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Invalid username or password')),
-                );
+
+                if (response['success'] == true) {
+                 CustomSnackBar.showSuccess(context: context, message: "Student Login Successful");
+           
+
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StudentDashboardScreen(),
+                    ),
+                  );
+                } else {
+                 CustomSnackBar.showError(context: context, message: "Invalid Username or Password");
+           
+                }
+              } catch (e) {
+                CustomSnackBar.showError(context: context, message: "Login failed: ${e.toString()}");
+           
+              } finally {
+                setState(() => _isLoading = false);
               }
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Login failed: ${e.toString()}')),
-              );
-            } finally {
-              setState(() => _loading = false);
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+            ),
+            child: Text(
+              'Sign In',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
-          child: const Text(
-            'Sign In',
+        ),
+
+        // Loader
+        if (_isLoading) ...[
+          SizedBox(height: 20),
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF282C5C)),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Signing in...',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
+              color: Color(0xFF282C5C),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildStaffSignInButton() {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          height: 46,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF282C5C), Color(0xFF282C5C)],
+            ),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF282C5C).withAlpha(26),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: () async {
+              HapticFeedback.lightImpact();
+              final username = _staffUsernameController.text.trim();
+              final password = _staffPasswordController.text.trim();
+
+              if (username.isEmpty || password.isEmpty) {
+                CustomSnackBar.showWarning(context: context, message: "Please fill all the fields");
+           
+                return;
+              }
+
+              try {
+                setState(() => _loading = true);
+
+                final response = await ApiService.staffLogin(
+                  username,
+                  password,
+                );
+
+                if (response['success'] == true) {
+                  final staffData = response['staff'];
+                  final staff = StaffProfile.fromJson(staffData);
+
+                 CustomSnackBar.showSuccess(context: context, message: "Staff Login Successful");
+           
+
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StaffDashboardScreen(staff: staff),
+                    ),
+                  );
+                } else {
+                  CustomSnackBar.showError(context: context, message: "Invalid Usernme or Password");
+           
+                }
+              } catch (e) {
+                CustomSnackBar.showError(context: context, message: "Login failed: ${e.toString()}");
+           
+              } finally {
+                setState(() => _loading = false);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+            ),
+            child: const Text(
+              'Sign In',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
         ),
-      ),
-      
-      // Loader below the form (like admin login)
-      if (_loading) ...[
-        const SizedBox(height: 20),
-        const CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF282C5C)),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          'Signing in...',
-          style: TextStyle(
-            color: Color(0xFF282C5C),
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+
+        // Loader below the form (like admin login)
+        if (_loading) ...[
+          const SizedBox(height: 20),
+          const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF282C5C)),
           ),
-        ),
+          const SizedBox(height: 10),
+          const Text(
+            'Signing in...',
+            style: TextStyle(
+              color: Color(0xFF282C5C),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ],
-    ],
-  );
+    );
+  }
 }
-  
-
-  
-}
-
-
 
 class AnimatedUserTypeSelector extends StatefulWidget {
   final List<String> userTypes;

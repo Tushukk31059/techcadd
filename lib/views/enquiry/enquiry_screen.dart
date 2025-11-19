@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:techcadd/api/api_service.dart';
 import 'package:techcadd/models/dropdown_models.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 import 'package:techcadd/views/enquiry/create_enquiry_screen.dart';
 import 'package:techcadd/views/enquiry/edit_enquiry_dialog.dart';
 
@@ -113,30 +114,32 @@ class _EnquiryScreenState extends State<EnquiryScreen> {
       });
 
       if (!e.toString().contains('404')) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
+        CustomSnackBar.showError(
+          context: context,
+          message: "Failed to load Data",
+        );
       }
     }
   }
-String _getFilterCount(String filter) {
-  // If stats is empty, return '0'
-  if (_enquiryStats.isEmpty) return '0';
 
-  // For 'all' filter, return total count from API
-  if (filter == 'all') {
-    final totalCount = _enquiryStats['total_students'] ?? _enquiries.length;
-    return totalCount.toString();
+  String _getFilterCount(String filter) {
+    // If stats is empty, return '0'
+    if (_enquiryStats.isEmpty) return '0';
+
+    // For 'all' filter, return total count from API
+    if (filter == 'all') {
+      final totalCount = _enquiryStats['total_students'] ?? _enquiries.length;
+      return totalCount.toString();
+    }
+
+    // For specific status filters, count from the complete list
+    final count = _enquiries.where((enquiry) {
+      final enquiryMap = enquiry as Map<String, dynamic>;
+      return enquiryMap['enquiry_status'] == filter;
+    }).length;
+
+    return count.toString();
   }
-
-  // For specific status filters, count from the complete list
-  final count = _enquiries.where((enquiry) {
-    final enquiryMap = enquiry as Map<String, dynamic>;
-    return enquiryMap['enquiry_status'] == filter;
-  }).length;
-
-  return count.toString();
-}
 
   Future<void> _refreshData() async {
     await _loadEnquiryData();
@@ -331,9 +334,7 @@ String _getFilterCount(String filter) {
                         children: [
                           _FilterButton(
                             'All (${_getFilterCount('all')})',
-                            _getStatusColorForFilter(
-                              'all',
-                            ), 
+                            _getStatusColorForFilter('all'),
                             isActive: _currentFilter == 'all',
                             onTap: () => setState(() => _currentFilter = 'all'),
                           ),
@@ -393,9 +394,8 @@ String _getFilterCount(String filter) {
                             'Dropped (${_getFilterCount('dropped')})',
                             _getStatusColorForFilter('dropped'),
                             isActive: _currentFilter == 'dropped',
-                            onTap: () => setState(
-                              () => _currentFilter = 'dropped',
-                            ),
+                            onTap: () =>
+                                setState(() => _currentFilter = 'dropped'),
                           ),
                         ],
                       ),
@@ -510,12 +510,9 @@ String _getFilterCount(String filter) {
                               if (id != null && id is int) {
                                 _deleteEnquiry(id);
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Cannot delete: Invalid enquiry ID',
-                                    ),
-                                  ),
+                                CustomSnackBar.showError(
+                                  context: context,
+                                  message: "Cannot delete. Invalid Enquiry ID!",
                                 );
                               }
                             },
@@ -550,9 +547,11 @@ String _getFilterCount(String filter) {
     final enquiryId = enquiryMap['id'];
 
     if (enquiryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cannot edit: Invalid enquiry ID')),
+      CustomSnackBar.showError(
+        context: context,
+        message: "Cannot edit: Invalid enquiry ID",
       );
+
       return;
     }
 
@@ -965,9 +964,11 @@ String _getFilterCount(String filter) {
             onPressed: () {
               Navigator.pop(context);
               // TODO: Implement delete enquiry API call
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Enquiry deleted successfully')),
+              CustomSnackBar.showSuccess(
+                context: context,
+                message: "Enquiry Deleted Successfully",
               );
+
               _refreshData();
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -1599,16 +1600,18 @@ class _CreateEnquiryDialogState extends State<CreateEnquiryDialog> {
 
       await ApiService.createEnquiry(enquiryData);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enquiry created successfully!')),
+      CustomSnackBar.showSuccess(
+        context: context,
+        message: "Enquiry Created Successfully",
       );
 
       widget.onEnquiryCreated();
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to create enquiry: $e')));
+      CustomSnackBar.showError(
+        context: context,
+        message: "Failed to Create Enquiry",
+      );
     } finally {
       setState(() => _isSubmitting = false);
     }

@@ -1,6 +1,7 @@
 // lib/views/fee_collection/add_fee_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:techcadd/api/api_service.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 
 class AddFeeDialog extends StatefulWidget {
   final String registrationNumber;
@@ -66,21 +67,15 @@ class _AddFeeDialogState extends State<AddFeeDialog> {
       final amount = double.tryParse(_amountController.text) ?? 0;
 
       if (amount > widget.pendingFee) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Amount cannot exceed pending fee: ₹${widget.pendingFee}',
-            ),
-          ),
-        );
+         CustomSnackBar.showError(context: context, message: "Amount cannot exceed pending fee: ₹${widget.pendingFee}");
+           
         setState(() => _isSubmitting = false);
         return;
       }
 
       if (amount <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid amount')),
-        );
+       CustomSnackBar.showWarning(context: context, message: "Please Enter Valid Amount");
+           
         setState(() => _isSubmitting = false);
         return;
       }
@@ -99,9 +94,8 @@ class _AddFeeDialogState extends State<AddFeeDialog> {
       Navigator.pop(context);
       widget.onFeeAdded();
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add fee: $e')));
+      CustomSnackBar.showError(context: context, message: "Failed to add fee");
+           
     } finally {
       setState(() => _isSubmitting = false);
     }

@@ -238,7 +238,7 @@ static Future<void> debugStoredTokens() async {
   // Add these methods to your existing ApiService class
   static Future<List<Course>> getStudentCourses() async {
     try {
-      final url = Uri.parse('$baseUrl/api/student/courses/');
+      final url = Uri.parse('$baseUrl/api/student/lms/courses/');
       final response = await http
           .get(url, headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
@@ -261,7 +261,7 @@ static Future<void> debugStoredTokens() async {
 
   static Future<Course> getCourseDetail(int courseId) async {
     try {
-      final url = Uri.parse('$baseUrl/api/student/courses/$courseId/');
+      final url = Uri.parse('$baseUrl/api/student/lms/courses/$courseId/');
       final response = await http
           .get(url, headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
@@ -1120,10 +1120,29 @@ static Future<Map<String, dynamic>> getStaffDashboardStats() async {
     };
   }
 }
-
-// Add to ApiService class
-
-// Get students with pending fees
+static Map<String, dynamic> _getMockStudentDashboard() {
+  return {
+    'dashboard': {
+      'registration_number': 'TCD/2024/1001',
+      'student_name': 'Demo Student',
+      'joining_date': '2024-01-15',
+      'course_name': 'Web Development',
+      'course_completion_date': '2024-04-15',
+      'days_remaining_to_complete': 45, // Number, not string
+      'course_status': 'ongoing',
+      'total_course_fee': 15000.00, // Number, not string
+      'paid_fee': 7500.00, // Number, not string
+      'fee_balance': 7500.00, // Number, not string
+      'payment_percentage': 50.0, // Number, not string
+      'quick_stats': {
+        'total_courses': 1, // Number, not string
+        'completed_lessons': 5, // Number, not string
+        'upcoming_classes': 2, // Number, not string
+        'pending_assignments': 3 // Number, not string
+      }
+    }
+  };
+}
 static Future<List<dynamic>> getStudentsWithPendingFees() async {
   try {
     final url = Uri.parse('$baseUrl/api/staff/registrations/list/');
@@ -1360,9 +1379,7 @@ static Future<List<dynamic>> getCoursesByType(int courseTypeId) async {
     print('❌ Courses by type error: $e');
     return [];
   }
-}
-
-// Create student registration
+}// Create student registration
 static Future<Map<String, dynamic>> createStudentRegistration(Map<String, dynamic> registrationData) async {
   try {
     final url = Uri.parse('$baseUrl/api/staff/registrations/create/');
@@ -1494,7 +1511,7 @@ static Future<List<dynamic>> getStudentRegistrations() async {
   // Get Student Dashboard Data
   static Future<Map<String, dynamic>> getStudentDashboard() async {
     try {
-      final url = Uri.parse('$baseUrl/api/student/dashboard/');
+      final url = Uri.parse('$baseUrl/api/student/lms/dashboard/');
       final headers = await _getStudentHeaders();
       
       final response = await http.get(
@@ -1513,31 +1530,214 @@ static Future<List<dynamic>> getStudentRegistrations() async {
       rethrow;
     }
   }
+  
+static Future<Map<String, dynamic>> getStudentCourseDetail() async {
+  try {
+    final url = Uri.parse('$baseUrl/api/student/lms/my-course/');
+    final headers = await _getStudentHeaders();
+    
+    print('🎓 Course Detail URL: $url');
+    
+    final response = await http.get(
+      url,
+      headers: headers,
+    ).timeout(const Duration(seconds: 10));
 
-  // Get Student Course Details
-  static Future<Map<String, dynamic>> getStudentCourse() async {
-    try {
-      final url = Uri.parse('$baseUrl/api/student/my-course/');
-      final headers = await _getStudentHeaders();
-      
-      final response = await http.get(
-        url,
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
+    print('📡 Course Detail Response Status: ${response.statusCode}');
+    print('📦 Course Detail Response Body: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data;
-      } else {
-        throw Exception('Failed to load student course: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Student course error: $e');
-      rethrow;
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data;
+    } else {
+      throw Exception('Failed to load course detail: ${response.statusCode}');
     }
+  } catch (e) {
+    print('❌ Course detail error: $e');
+    rethrow;
   }
+}
 
-  // Check if student is logged in
+static Future<Map<String, dynamic>> getStudentCourse() async {
+  try {
+    final url = Uri.parse('$baseUrl/api/student/lms/my-course/');
+    final headers = await _getStudentHeaders();
+    
+    print('🎓 Course Content URL: $url');
+    
+    final response = await http.get(
+      url,
+      headers: headers,
+    ).timeout(const Duration(seconds: 10));
+
+    print('📡 Course Content Response Status: ${response.statusCode}');
+    print('📦 Course Content Response Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data;
+    } else {
+      // Return mock data for development
+      print('⚠️ Course API returned ${response.statusCode}, using mock data');
+      return _getMockStudentCourse();
+    }
+  } catch (e) {
+    print('❌ Student course error: $e, using mock data');
+    return _getMockStudentCourse();
+  }
+}
+
+static Future<Map<String, dynamic>> getModuleDetail(int moduleId) async {
+  try {
+    final url = Uri.parse('$baseUrl/api/student/lms/modules/$moduleId/');
+    final headers = await _getStudentHeaders();
+    
+    final response = await http.get(
+      url,
+      headers: headers,
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load module detail: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('❌ Module detail error: $e');
+    rethrow;
+  }
+}
+static Future<Map<String, dynamic>> getLessonDetail(int lessonId) async {
+  try {
+    final url = Uri.parse('$baseUrl/api/student/lms/lessons/$lessonId/');
+    final headers = await _getStudentHeaders();
+    
+    final response = await http.get(
+      url,
+      headers: headers,
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load lesson detail: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('❌ Lesson detail error: $e');
+    rethrow;
+  }
+}
+
+static Future<Map<String, dynamic>> updateLessonProgress(
+  int lessonId, {
+  required double completionPercentage,
+  required int timeSpentMinutes,
+  required String status,
+}) async {
+  try {
+    final url = Uri.parse('$baseUrl/api/student/lms/lessons/$lessonId/progress/');
+    final headers = await _getStudentHeaders();
+    
+    final progressData = {
+      'completion_percentage': completionPercentage,
+      'time_spent_minutes': timeSpentMinutes,
+      'status': status,
+    };
+    
+    final response = await http.post(
+      url,
+      body: json.encode(progressData),
+      headers: headers,
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to update progress: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('❌ Update progress error: $e');
+    rethrow;
+  }
+}
+
+static Map<String, dynamic> _getMockStudentCourse() {
+  return {
+    'course': {
+      'id': 1,
+      'name': 'Web Development',
+      'course_progress': {
+        'total_lessons': 12,
+        'completed_lessons': 5,
+        'progress_percentage': 41.7,
+      },
+      'modules': [
+        {
+          'id': 1,
+          'title': 'HTML Fundamentals',
+          'description': 'Learn the basics of HTML and structure web pages',
+          'order': 1,
+          'total_lessons': 3,
+          'completed_lessons': 2,
+          'total_duration_minutes': 95,
+          'lessons': [
+            {
+              'id': 1,
+              'title': 'Introduction to HTML',
+              'lesson_type': 'video',
+              'duration_minutes': 30,
+              'is_completed': true,
+              'progress_percentage': 100.0,
+            },
+            {
+              'id': 2,
+              'title': 'HTML Tags and Elements',
+              'lesson_type': 'video',
+              'duration_minutes': 45,
+              'is_completed': true,
+              'progress_percentage': 100.0,
+            },
+            {
+              'id': 3,
+              'title': 'HTML Document Structure',
+              'lesson_type': 'text',
+              'duration_minutes': 20,
+              'is_completed': false,
+              'progress_percentage': 25.0,
+            },
+          ],
+        },
+        {
+          'id': 2,
+          'title': 'CSS Fundamentals',
+          'description': 'Style your web pages with CSS',
+          'order': 2,
+          'total_lessons': 4,
+          'completed_lessons': 1,
+          'total_duration_minutes': 180,
+          'lessons': [
+            {
+              'id': 4,
+              'title': 'Introduction to CSS',
+              'lesson_type': 'video',
+              'duration_minutes': 35,
+              'is_completed': true,
+              'progress_percentage': 100.0,
+            },
+            {
+              'id': 5,
+              'title': 'CSS Selectors',
+              'lesson_type': 'video',
+              'duration_minutes': 40,
+              'is_completed': false,
+              'progress_percentage': 0.0,
+            },
+          ],
+        },
+      ],
+    }
+  };
+}  // Check if student is logged in
   static Future<bool> isStudentLoggedIn() async {
     try {
       final prefs = await SharedPreferences.getInstance();

@@ -1,8 +1,10 @@
 // lib/views/create_registration_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:math';
 import 'package:techcadd/api/api_service.dart';
 import 'package:techcadd/models/course_models.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 
 class CreateRegistrationScreen extends StatefulWidget {
   final Map<String, dynamic> registrationOptions;
@@ -153,9 +155,10 @@ class _CreateRegistrationScreenState extends State<CreateRegistrationScreen> {
       });
     } catch (e) {
       print('❌ Error loading courses: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to load courses: $e')));
+      CustomSnackBar.showError(
+        context: context,
+        message: 'Failed to load course',
+      );
     } finally {
       setState(() => _isLoadingCourses = false);
     }
@@ -340,11 +343,11 @@ class _CreateRegistrationScreenState extends State<CreateRegistrationScreen> {
     final paidFee = double.tryParse(_paidFeeController.text) ?? 0;
 
     if (paidFee > totalFee) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Paid fee cannot exceed total course fee'),
-        ),
+      CustomSnackBar.showError(
+        context: context,
+        message: 'Paid fee cannot exceed total course fee',
       );
+
       return;
     }
 
@@ -389,11 +392,9 @@ class _CreateRegistrationScreenState extends State<CreateRegistrationScreen> {
         registrationData,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Student registration created successfully!'),
-          backgroundColor: Colors.green,
-        ),
+      CustomSnackBar.showSuccess(
+        context: context,
+        message: 'Student Registered successfully',
       );
 
       // Show credentials if available
@@ -432,13 +433,10 @@ class _CreateRegistrationScreenState extends State<CreateRegistrationScreen> {
       }
 
       widget.onRegistrationCreated();
-      
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to create registration: $e'),
-          backgroundColor: Colors.red,
-        ),
+      CustomSnackBar.showError(
+        context: context,
+        message: 'Student Registration Failed',
       );
     } finally {
       setState(() => _isSubmitting = false);

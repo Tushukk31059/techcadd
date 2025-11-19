@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:techcadd/api/api_service.dart';
 import 'package:techcadd/models/staff_model.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 import 'package:techcadd/views/staff/create_staff_screen.dart';
 
 class StaffListScreen extends StatefulWidget {
@@ -80,14 +81,12 @@ class _StaffListScreenState extends State<StaffListScreen> {
   Future<void> _deleteStaff(int staffId) async {
     try {
       await ApiService.deleteStaffAccount(staffId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Staff account deleted successfully')),
-      );
+      CustomSnackBar.showSuccess(context: context, message: 'Staff account created successfully');
+      
       _loadStaffList();
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to delete staff: $e')));
+      CustomSnackBar.showError(context: context, message: 'Failed to delete staff');
+     
     }
   }
 
@@ -346,16 +345,14 @@ class _StaffDetailDialogState extends State<StaffDetailDialog> {
         !widget.staff.isActive,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Staff status updated successfully')),
-      );
+      CustomSnackBar.showSuccess(context: context, message: 'Staff status updated successfully');
+     
 
       widget.onUpdate();
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to update status: $e')));
+      CustomSnackBar.showError(context: context, message: 'Failed to update Staff status');
+     
     } finally {
       setState(() => _isLoading = false);
     }

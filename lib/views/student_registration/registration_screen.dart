@@ -1,6 +1,7 @@
 // lib/views/registration_screen.dart
 import 'package:flutter/material.dart';
 import 'package:techcadd/api/api_service.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 import 'package:techcadd/views/student_registration/create_registration_screen.dart';
 
 class RegistrationScreen extends StatefulWidget {
@@ -43,9 +44,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
+      CustomSnackBar.showError(context: context, message: 'Failed to load Data');
+     
     }
   }
 

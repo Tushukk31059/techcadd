@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:techcadd/api/api_service.dart';
 import 'package:techcadd/models/dropdown_models.dart';
+import 'package:techcadd/utils/snackbar_utils.dart';
 
 class EditEnquiryDialog extends StatefulWidget {
   final Map<String, dynamic> enquiry;
@@ -94,22 +95,14 @@ class _EditEnquiryDialogState extends State<EditEnquiryDialog> {
       final enquiryId = widget.enquiry['id'] as int;
       await ApiService.updateEnquiry(enquiryId, updateData);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enquiry updated successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    CustomSnackBar.showSuccess(context: context, message: "Enquiry Updated Successfully");
+           
 
       widget.onEnquiryUpdated();
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update enquiry: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+       CustomSnackBar.showError(context: context, message: "Failed to Update Enquiry");
+           
     } finally {
       setState(() => _isSubmitting = false);
     }
